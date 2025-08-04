@@ -244,22 +244,25 @@ class HybridAIModel:
         return "\n".join(context_parts) if context_parts else ""
     
     def _get_rag_context(self, message: str, modpack_name: str) -> str:
-        """GCP RAG에서 컨텍스트를 가져옵니다."""
+        """GCP RAG에서 컨텍스트를 가져옵니다. (필수)"""
         if not self.rag_manager:
-            return ""
+            logger.error("❌ RAG 매니저가 초기화되지 않았습니다!")
+            raise RuntimeError("RAG 매니저가 필수이지만 초기화되지 않았습니다.")
         
         try:
             # RAG 매니저를 통한 검색
             relevant_docs = self.rag_manager.search_similar_documents(message, modpack_name, top_k=3)
             
             if relevant_docs:
+                logger.info(f"✅ RAG에서 {len(relevant_docs)}개 문서 검색됨")
                 return f"RAG 정보:\n{json.dumps(relevant_docs, ensure_ascii=False)}"
-            
-            return ""
+            else:
+                logger.warning(f"⚠️ RAG에서 관련 문서를 찾을 수 없음: {message}")
+                return "RAG 정보: 관련 문서를 찾을 수 없습니다."
             
         except Exception as e:
-            logger.error(f"RAG 컨텍스트 조회 오류: {e}")
-            return ""
+            logger.error(f"❌ RAG 컨텍스트 조회 오류: {e}")
+            raise RuntimeError(f"RAG 컨텍스트 조회 실패: {e}")
     
     def _get_web_search_context(self, message: str, modpack_name: str) -> str:
         """AI 웹검색을 통해 컨텍스트를 가져옵니다."""
@@ -429,12 +432,14 @@ class HybridAIModel:
             # 1. 로컬 컨텍스트 (빠른 응답)
             local_context = self._get_local_context(processed_message, modpack_name, modpack_version, user_uuid)
             
-            # 2. RAG 컨텍스트 (상세 정보)
+            # 2. RAG 컨텍스트 (필수 - 상세 정보)
             rag_context = self._get_rag_context(processed_message, modpack_name)
             
-            # 3. 웹검색 컨텍스트 (최신 정보, 필요시에만)
+            # 3. 웹검색 컨텍스트 (보조 - 최신 정보, 선택적)
             web_context = ""
-            if not local_context and not rag_context:
+            # RAG에서 충분한 정보를 찾지 못한 경우에만 웹검색 사용
+            if "관련 문서를 찾을 수 없습니다" in rag_context:
+                logger.info("RAG에서 정보를 찾지 못해 웹검색을 시도합니다.")
                 web_context = self._get_web_search_context(processed_message, modpack_name)
             
             # 시스템 프롬프트 구성

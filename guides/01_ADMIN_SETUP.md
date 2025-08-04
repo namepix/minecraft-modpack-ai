@@ -55,7 +55,7 @@ chmod +x install.sh
 - ✅ 백엔드 서비스 시작
 - ✅ 모든 모드팩 AI 분석
 
-### **3단계: API 키 설정 (필수)**
+### **3단계: API 키 및 GCP 설정 (필수)**
 스크립트 실행 중 API 키 설정 안내가 나타납니다. 
 
 **3.1 환경 변수 파일 열기**
@@ -65,7 +65,7 @@ chmod +x install.sh
 nano $HOME/minecraft-ai-backend/.env
 ```
 
-**3.2 API 키 입력**
+**3.2 API 키 및 GCP 설정 입력**
 **편집기에서 파일 내용을 다음과 같이 수정하세요:**
 
 ```bash
@@ -77,9 +77,26 @@ ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-api-key
 
 # Google API 키 (선택)
 GOOGLE_API_KEY=your-actual-google-api-key
+
+# GCP 설정 (RAG 기능용, 필수)
+GCP_PROJECT_ID=your-actual-gcp-project-id
+GCS_BUCKET_NAME=your-actual-gcs-bucket-name
 ```
 
-**3.3 파일 저장**
+**3.3 GCP 설정 방법**
+**GCP 프로젝트 ID 확인:**
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 상단의 프로젝트 선택 드롭다운에서 프로젝트 ID 확인
+3. 또는 `gcloud config get-value project` 명령어로 확인
+
+**GCS 버킷 생성:**
+1. [Cloud Storage](https://console.cloud.google.com/storage/browser) 페이지 접속
+2. "버킷 만들기" 클릭
+3. 버킷 이름 입력 (예: `minecraft-ai-rag-data`)
+4. 지역 선택 (예: `us-central1`)
+5. "만들기" 클릭
+
+**3.4 파일 저장**
 **편집기에서 다음 키를 순서대로 눌러 저장하세요:**
 1. `Ctrl + X` (저장 및 종료)
 2. `Y` (변경사항 저장 확인)
@@ -330,7 +347,7 @@ chmod +x setup_all_modpacks.sh
 ./setup_all_modpacks.sh
 ```
 
-### **5단계: API 키 설정**
+### **5단계: API 키 및 GCP 설정**
 
 **5.1 환경 변수 파일 열기**
 **터미널에서 다음 명령어를 입력하세요:**
@@ -339,7 +356,7 @@ chmod +x setup_all_modpacks.sh
 nano $HOME/minecraft-ai-backend/.env
 ```
 
-**5.2 API 키 입력**
+**5.2 API 키 및 GCP 설정 입력**
 **편집기에서 파일 내용을 다음과 같이 수정하세요:**
 
 ```bash
@@ -351,9 +368,26 @@ ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-api-key
 
 # Google API 키 (선택)
 GOOGLE_API_KEY=your-actual-google-api-key
+
+# GCP 설정 (RAG 기능용, 필수)
+GCP_PROJECT_ID=your-actual-gcp-project-id
+GCS_BUCKET_NAME=your-actual-gcs-bucket-name
 ```
 
-**5.3 파일 저장**
+**5.3 GCP 설정 방법**
+**GCP 프로젝트 ID 확인:**
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 상단의 프로젝트 선택 드롭다운에서 프로젝트 ID 확인
+3. 또는 `gcloud config get-value project` 명령어로 확인
+
+**GCS 버킷 생성:**
+1. [Cloud Storage](https://console.cloud.google.com/storage/browser) 페이지 접속
+2. "버킷 만들기" 클릭
+3. 버킷 이름 입력 (예: `minecraft-ai-rag-data`)
+4. 지역 선택 (예: `us-central1`)
+5. "만들기" 클릭
+
+**5.4 파일 저장**
 **편집기에서 다음 키를 순서대로 눌러 저장하세요:**
 1. `Ctrl + X` (저장 및 종료)
 2. `Y` (변경사항 저장 확인)
@@ -377,67 +411,57 @@ sudo systemctl enable mc-ai-backend
 sudo systemctl status mc-ai-backend
 ```
 
-### **7단계: 모든 모드팩 AI 분석**
+### **7단계: 모드팩 분석 및 설정**
 
-**7.1 스크립트 파일 생성**
+**7.1 모드팩 파일 업로드**
 **터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-nano analyze_all_modpacks.sh
+# 모드팩 디렉토리 생성 (이미 생성되어 있을 수 있음)
+sudo mkdir -p /tmp/modpacks
+sudo chmod 755 /tmp/modpacks
 ```
 
-**7.2 스크립트 내용 입력**
-**편집기에서 다음 내용을 복사하여 붙여넣으세요:**
+**모드팩 파일을 `/tmp/modpacks/` 디렉토리에 업로드하세요:**
+- **SCP 사용**: `scp your-modpack.zip username@server-ip:/tmp/modpacks/`
+- **SFTP 사용**: 파일을 `/tmp/modpacks/` 디렉토리에 업로드
+- **직접 복사**: USB나 다른 방법으로 파일을 서버에 복사
 
-```bash
-#!/bin/bash
-
-# 모드팩 디렉토리 목록
-MODPACKS=(
-    "enigmatica_10"
-    "enigmatica_9e"
-    "enigmatica_6"
-    "integrated_MC"
-    "atm10"
-    "beyond_depth"
-    "carpg"
-    "cteserver"
-    "prominence_2"
-    "mnm"
-    "test"
-)
-
-echo "모든 모드팩 분석 시작..."
-
-for modpack in "${MODPACKS[@]}"; do
-    if [ -d "$HOME/$modpack" ]; then
-        echo "분석 중: $modpack"
-        
-        # CLI 스크립트로 모드팩 분석
-        modpack_switch "$modpack" 1.0.0
-        
-        echo "✅ $modpack 분석 완료"
-    else
-        echo "⚠️ 디렉토리를 찾을 수 없음: $modpack"
-    fi
-done
-
-echo "모든 모드팩 분석 완료!"
-```
-
-**7.3 파일 저장**
-**편집기에서 다음 키를 순서대로 눌러 저장하세요:**
-1. `Ctrl + X` (저장 및 종료)
-2. `Y` (변경사항 저장 확인)
-3. `Enter` (파일명 확인)
-
-**7.4 스크립트 실행**
+**7.2 모드팩 분석 실행**
 **터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-chmod +x analyze_all_modpacks.sh
-./analyze_all_modpacks.sh
+# 방법 1: 설정 파일에서 모드팩 정보 읽어서 분석
+modpack_switch
+
+# 방법 2: 특정 모드팩 분석 (버전 자동 추출)
+modpack_switch CreateModpack
+
+# 방법 3: 특정 모드팩과 버전으로 분석
+modpack_switch FTBRevelation 1.0.0
+
+# 사용 가능한 모드팩 목록 확인
+modpack_switch --list
 ```
+
+**설명**: 
+- **방법 1**: `.env` 파일의 `CURRENT_MODPACK_NAME`과 `CURRENT_MODPACK_VERSION`을 읽어서 분석
+- **방법 2**: 파일명에서 버전을 자동으로 추출 시도 (실패 시 기본값 1.0 사용)
+- **방법 3**: 사용자가 지정한 버전으로 분석
+
+**7.3 분석 결과 확인**
+**분석이 완료되면 다음과 같은 정보가 표시됩니다:**
+
+```
+📊 분석 결과:
+  🎮 모드팩: CreateModpack v1.0.0
+  📦 모드 수: 150
+  🛠️ 제작법 수: 2500
+  🎯 아이템 수: 3000
+  🌐 언어 매핑: 500개 추가
+```
+
+**설정 파일이 자동으로 업데이트되어 다음 분석부터는 `modpack_switch`만 입력하면 됩니다.**
 
 ---
 
@@ -638,6 +662,29 @@ ls -la ~/enigmatica_10/start.sh
 chmod +x ~/*/start.sh
 ```
 
+### **RAG 시스템 오류**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+# GCP 설정 확인
+grep GCP $HOME/minecraft-ai-backend/.env
+
+# GCP 프로젝트 연결 확인
+gcloud auth list
+
+# GCS 버킷 접근 확인
+gsutil ls gs://your-bucket-name
+
+# RAG 서비스 상태 확인
+sudo journalctl -u mc-ai-backend | grep RAG
+```
+
+**일반적인 RAG 오류:**
+- **GCP_PROJECT_ID 누락**: Google Cloud Console에서 프로젝트 ID 확인
+- **GCS_BUCKET_NAME 누락**: Cloud Storage에서 버킷 생성
+- **권한 오류**: GCP 서비스 계정에 Storage 권한 부여
+- **네트워크 오류**: GCP API 활성화 확인
+
 ---
 
 ## 📞 지원
@@ -645,9 +692,11 @@ chmod +x ~/*/start.sh
 ### **문제 발생 시 확인사항**
 1. ✅ 백엔드 서비스가 정상 실행 중인지
 2. ✅ API 키가 올바르게 설정되었는지
-3. ✅ 플러그인 파일이 올바른 위치에 있는지
-4. ✅ 시작 스크립트가 통일되었는지
-5. ✅ 방화벽 설정이 올바른지
+3. ✅ GCP 설정이 올바르게 되어 있는지
+4. ✅ GCS 버킷에 접근할 수 있는지
+5. ✅ 플러그인 파일이 올바른 위치에 있는지
+6. ✅ 시작 스크립트가 통일되었는지
+7. ✅ 방화벽 설정이 올바른지
 
 ### **로그 확인**
 **터미널에서 다음 명령어를 입력하세요:**
@@ -655,6 +704,9 @@ chmod +x ~/*/start.sh
 ```bash
 # 백엔드 로그
 sudo journalctl -u mc-ai-backend -f
+
+# RAG 관련 로그만 확인
+sudo journalctl -u mc-ai-backend | grep -i rag
 
 # 게임 서버 로그
 tail -f ~/enigmatica_10/logs/latest.log
@@ -682,11 +734,14 @@ free -h
 - [ ] GCP VM Debian 환경
 - [ ] 마인크래프트 모드팩 서버 실행 중
 - [ ] API 키 준비 (OpenAI, Anthropic, Google)
+- [ ] GCP 프로젝트 ID 확인
+- [ ] GCS 버킷 생성 완료
 
 ### **설치 과정**
 - [ ] 프로젝트 다운로드
 - [ ] 완전 자동 설치 실행 (또는 단계별 설치)
 - [ ] API 키 설정
+- [ ] GCP 설정 (프로젝트 ID, 버킷 이름)
 - [ ] 백엔드 서비스 시작
 - [ ] 모드팩 분석 완료
 

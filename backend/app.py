@@ -74,15 +74,23 @@ def initialize_services():
         # 언어 매퍼 초기화
         language_mapper = LanguageMapper()
         
-        # RAG 매니저 초기화
+        # RAG 매니저 초기화 (필수)
         gcp_project_id = os.getenv('GCP_PROJECT_ID')
         gcs_bucket_name = os.getenv('GCS_BUCKET_NAME')
         
-        if gcp_project_id and gcs_bucket_name:
+        if not gcp_project_id or not gcs_bucket_name:
+            logger.error("❌ RAG 필수 설정 누락!")
+            logger.error("GCP_PROJECT_ID와 GCS_BUCKET_NAME이 필요합니다.")
+            logger.error("env.example을 참고하여 .env 파일을 설정하세요.")
+            raise ValueError("RAG 필수 설정이 누락되었습니다.")
+        
+        try:
             rag_manager = RAGManager(gcp_project_id, gcs_bucket_name)
-        else:
-            logger.warning("GCP 설정이 없어 RAG 매니저를 초기화할 수 없습니다.")
-            rag_manager = None
+            logger.info("✅ RAG 매니저 초기화 완료")
+        except Exception as e:
+            logger.error(f"❌ RAG 매니저 초기화 실패: {e}")
+            logger.error("GCP 프로젝트 ID와 버킷 이름을 확인하세요.")
+            raise
         
         # AI 모델 초기화 (recipe_manager, language_mapper, rag_manager 전달)
         ai_model = HybridAIModel(recipe_manager=recipe_manager, language_mapper=language_mapper, rag_manager=rag_manager)
@@ -90,24 +98,27 @@ def initialize_services():
         # 모드팩 분석기 초기화
         modpack_analyzer = ModpackAnalyzer()
         
-        logger.info("모든 서비스가 성공적으로 초기화되었습니다.")
+        logger.info("✅ 모든 서비스가 성공적으로 초기화되었습니다.")
         
     except Exception as e:
-        logger.error(f"서비스 초기화 중 오류 발생: {e}")
-        # 부분적 초기화 허용
+        logger.error(f"❌ 서비스 초기화 중 오류 발생: {e}")
+        
+        # 필수 서비스 확인
         if not chat_manager:
-            logger.warning("ChatManager 초기화 실패 - 기본 기능만 사용 가능")
+            logger.error("❌ ChatManager 초기화 실패 - 시스템 시작 불가")
         if not recipe_manager:
-            logger.warning("RecipeManager 초기화 실패 - 제작법 기능 사용 불가")
+            logger.error("❌ RecipeManager 초기화 실패 - 시스템 시작 불가")
         if not language_mapper:
-            logger.warning("LanguageMapper 초기화 실패 - 언어 변환 기능 사용 불가")
-        if not ai_model:
-            logger.error("AIModel 초기화 실패 - AI 기능 사용 불가")
-            raise  # AI 모델은 필수이므로 예외 발생
-        if not modpack_analyzer:
-            logger.warning("ModpackAnalyzer 초기화 실패 - 모드팩 분석 기능 사용 불가")
+            logger.error("❌ LanguageMapper 초기화 실패 - 시스템 시작 불가")
         if not rag_manager:
-            logger.warning("RAGManager 초기화 실패 - RAG 기능 사용 불가")
+            logger.error("❌ RAGManager 초기화 실패 - 시스템 시작 불가")
+        if not ai_model:
+            logger.error("❌ AIModel 초기화 실패 - 시스템 시작 불가")
+        if not modpack_analyzer:
+            logger.error("❌ ModpackAnalyzer 초기화 실패 - 시스템 시작 불가")
+        
+        # 필수 서비스 중 하나라도 실패하면 시스템 중단
+        raise
 
 @app.route('/health', methods=['GET'])
 def health_check():

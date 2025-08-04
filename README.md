@@ -96,8 +96,14 @@ sudo systemctl enable mc-ai-backend
 
 ### CLI 모드팩 변경 스크립트
 ```bash
-# 모드팩 변경
-modpack_switch CreateModpack 1.0.0
+# 설정 파일에서 모드팩 정보 읽어서 분석
+modpack_switch
+
+# 특정 모드팩 분석 (버전 자동 추출)
+modpack_switch CreateModpack
+
+# 특정 모드팩과 버전으로 분석
+modpack_switch FTBRevelation 1.0.0
 
 # 사용 가능한 모드팩 목록
 modpack_switch --list
