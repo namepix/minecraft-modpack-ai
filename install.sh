@@ -66,23 +66,21 @@ sudo apt install -y \
 
 # 3. 백엔드 디렉토리 생성
 log_info "백엔드 디렉토리 설정 중..."
-sudo mkdir -p /opt/mc_ai_backend
-sudo mkdir -p /opt/mc_ai_backend/logs
-sudo mkdir -p /opt/mc_ai_backend/uploads
-sudo mkdir -p /opt/mc_ai_backend/backups
-sudo mkdir -p /tmp/modpacks
+mkdir -p $HOME/minecraft-ai-backend
+mkdir -p $HOME/minecraft-ai-backend/logs
+mkdir -p $HOME/minecraft-ai-backend/uploads
+mkdir -p $HOME/minecraft-ai-backend/backups
+mkdir -p /tmp/modpacks
 
 # 4. 사용자 권한 설정
-sudo chown -R $USER:$USER /opt/mc_ai_backend
-sudo chown -R $USER:$USER /tmp/modpacks
-sudo chmod 755 /opt/mc_ai_backend
-sudo chmod 755 /tmp/modpacks
+chmod 755 $HOME/minecraft-ai-backend
+chmod 755 /tmp/modpacks
 
 # 5. Python 가상환경 생성
 log_info "Python 가상환경 생성 중..."
-cd /opt/mc_ai_backend
-python3 -m venv /opt/mc_ai_env
-source /opt/mc_ai_env/bin/activate
+cd $HOME/minecraft-ai-backend
+python3 -m venv $HOME/minecraft-ai-env
+source $HOME/minecraft-ai-env/bin/activate
 
 # 6. Python 패키지 설치
 log_info "Python 패키지 설치 중..."
@@ -91,10 +89,10 @@ pip install -r requirements.txt
 
 # 7. 환경 변수 파일 설정
 log_info "환경 변수 파일 설정 중..."
-if [ ! -f /opt/mc_ai_backend/.env ]; then
-    cp env.example /opt/mc_ai_backend/.env
+if [ ! -f $HOME/minecraft-ai-backend/.env ]; then
+    cp env.example $HOME/minecraft-ai-backend/.env
     log_warning "환경 변수 파일이 생성되었습니다. API 키를 설정해주세요:"
-    log_info "nano /opt/mc_ai_backend/.env"
+    log_info "nano $HOME/minecraft-ai-backend/.env"
 fi
 
 # 8. 모드팩 스위치 스크립트 설치
@@ -113,9 +111,9 @@ After=network.target
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=/opt/mc_ai_backend
-Environment=PATH=/opt/mc_ai_env/bin
-ExecStart=/opt/mc_ai_env/bin/python app.py
+WorkingDirectory=$HOME/minecraft-ai-backend
+Environment=PATH=$HOME/minecraft-ai-env/bin
+ExecStart=$HOME/minecraft-ai-env/bin/python app.py
 Restart=always
 RestartSec=10
 
@@ -131,9 +129,9 @@ sudo systemctl enable mc-ai-backend
 log_info "Minecraft 플러그인 빌드 중..."
 cd minecraft_plugin
 mvn clean package
-sudo mkdir -p /opt/minecraft/plugins
-sudo cp target/ModpackAI-1.0.jar /opt/minecraft/plugins/
-sudo chown -R $USER:$USER /opt/minecraft
+log_info "✅ 플러그인 빌드 완료"
+log_info "플러그인 파일: target/ModpackAI-1.0.jar"
+log_info "각 모드팩의 plugins 폴더에 수동으로 복사하세요"
 
 # 12. 방화벽 설정
 log_info "방화벽 설정 중..."
@@ -160,7 +158,7 @@ echo "🎉 마인크래프트 모드팩 AI 시스템 설치 완료!"
 echo ""
 echo "📋 다음 단계:"
 echo "1. API 키 설정:"
-echo "   nano /opt/mc_ai_backend/.env"
+echo "   nano $HOME/minecraft-ai-backend/.env"
 echo ""
 echo "2. 백엔드 서비스 시작:"
 echo "   sudo systemctl start mc-ai-backend"

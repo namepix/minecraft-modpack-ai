@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 설정 파일 경로
-CONFIG_FILE="/opt/mc_ai_backend/.env"
+CONFIG_FILE="$HOME/minecraft-ai-backend/.env"
 MODPACKS_DIR="/tmp/modpacks"
 BACKEND_URL="http://localhost:5000"
 

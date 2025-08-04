@@ -73,8 +73,8 @@ fi
 log_info "데이터베이스 상태 확인 중..."
 DB_FILES=("chat_history.db" "recipes.db" "language_mappings.db")
 for db_file in "${DB_FILES[@]}"; do
-    if [ -f "/opt/mc_ai_backend/$db_file" ]; then
-        DB_SIZE=$(du -h "/opt/mc_ai_backend/$db_file" | cut -f1)
+    if [ -f "$HOME/minecraft-ai-backend/$db_file" ]; then
+        DB_SIZE=$(du -h "$HOME/minecraft-ai-backend/$db_file" | cut -f1)
         log_info "✅ $db_file 존재 (크기: $DB_SIZE)"
     else
         log_warn "⚠️ $db_file 없음"
@@ -83,15 +83,20 @@ for db_file in "${DB_FILES[@]}"; do
 done
 
 # 4. 플러그인 파일 확인
-log_info "Minecraft 플러그인 확인 중..."
-PLUGIN_FILE="/opt/minecraft/plugins/ModpackAI.jar"
-if [ -f "$PLUGIN_FILE" ]; then
-    PLUGIN_SIZE=$(du -h "$PLUGIN_FILE" | cut -f1)
-    log_info "✅ 플러그인 파일 존재 (크기: $PLUGIN_SIZE)"
-else
-    log_warn "⚠️ 플러그인 파일 없음"
-    send_notification "Minecraft 플러그인 파일이 없습니다." "WARN"
-fi
+PLUGIN_FILES=(
+    "$HOME/enigmatica_10/plugins/ModpackAI-1.0.jar"
+    "$HOME/integrated_MC/plugins/ModpackAI-1.0.jar"
+    "$HOME/atm10/plugins/ModpackAI-1.0.jar"
+)
+for plugin_file in "${PLUGIN_FILES[@]}"; do
+    if [ -f "$plugin_file" ]; then
+        PLUGIN_SIZE=$(du -h "$plugin_file" | cut -f1)
+        log_info "✅ 플러그인 파일 존재 (경로: $plugin_file, 크기: $PLUGIN_SIZE)"
+    else
+        log_warn "⚠️ 플러그인 파일 없음 (경로: $plugin_file)"
+        send_notification "Minecraft 플러그인 파일이 없습니다. (경로: $plugin_file)" "WARN"
+    fi
+done
 
 # 5. 시스템 리소스 확인
 log_info "시스템 리소스 확인 중..."
@@ -148,8 +153,8 @@ fi
 # 데이터베이스 크기 추이
 log_info "데이터베이스 크기 추이:"
 for db_file in "${DB_FILES[@]}"; do
-    if [ -f "/opt/mc_ai_backend/$db_file" ]; then
-        DB_SIZE_BYTES=$(stat -c%s "/opt/mc_ai_backend/$db_file")
+    if [ -f "$HOME/minecraft-ai-backend/$db_file" ]; then
+        DB_SIZE_BYTES=$(stat -c%s "$HOME/minecraft-ai-backend/$db_file")
         DB_SIZE_MB=$(echo "scale=2; $DB_SIZE_BYTES / 1024 / 1024" | bc)
         log_info "  - $db_file: ${DB_SIZE_MB}MB"
     fi

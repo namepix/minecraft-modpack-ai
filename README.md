@@ -47,7 +47,7 @@ chmod +x install.sh
 
 ### 2. API 키 설정
 ```bash
-nano /opt/mc_ai_backend/.env
+nano $HOME/minecraft-ai-backend/.env
 ```
 
 ### 3. 서비스 시작
@@ -148,7 +148,8 @@ sudo systemctl restart mc-ai-backend
 ### 플러그인 로드 오류
 ```bash
 # 플러그인 파일 확인
-ls -la /opt/minecraft/plugins/ModpackAI-1.0.jar
+ls -la ~/enigmatica_10/plugins/ModpackAI-1.0.jar
+ls -la ~/integrated_MC/plugins/ModpackAI-1.0.jar
 
 # Java 버전 확인
 java -version
@@ -157,7 +158,7 @@ java -version
 ### API 키 오류
 ```bash
 # 환경 변수 확인
-grep API_KEY /opt/mc_ai_backend/.env
+grep API_KEY $HOME/minecraft-ai-backend/.env
 ```
 
 ## 📈 성능 지표

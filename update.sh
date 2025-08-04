@@ -16,7 +16,7 @@ echo ""
 
 # 백업 생성
 echo -e "${YELLOW}📦 백업 생성 중...${NC}"
-sudo cp -r /opt/mc_ai_backend /opt/mc_ai_backend.backup.$(date +%Y%m%d_%H%M%S)
+cp -r $HOME/minecraft-ai-backend $HOME/minecraft-ai-backend.backup.$(date +%Y%m%d_%H%M%S)
 echo -e "${GREEN}✅ 백업 완료${NC}"
 
 # 서비스 중지
@@ -26,14 +26,14 @@ echo -e "${GREEN}✅ 서비스 중지됨${NC}"
 
 # 코드 업데이트
 echo -e "${YELLOW}🔄 코드 업데이트 중...${NC}"
-cp -r backend/* /opt/mc_ai_backend/
-cp -r config /opt/mc_ai_backend/
+cp -r backend/* $HOME/minecraft-ai-backend/
+cp -r config $HOME/minecraft-ai-backend/
 echo -e "${GREEN}✅ 코드 업데이트 완료${NC}"
 
 # 의존성 업데이트
 echo -e "${YELLOW}📦 의존성 업데이트 중...${NC}"
-cd /opt/mc_ai_backend
-source /opt/mc_ai_env/bin/activate
+cd $HOME/minecraft-ai-backend
+source $HOME/minecraft-ai-env/bin/activate
 pip install -r requirements.txt --upgrade
 echo -e "${GREEN}✅ 의존성 업데이트 완료${NC}"
 
@@ -41,7 +41,7 @@ echo -e "${GREEN}✅ 의존성 업데이트 완료${NC}"
 echo -e "${YELLOW}🔌 플러그인 재빌드 중...${NC}"
 cd minecraft_plugin
 mvn clean package
-sudo cp target/ModpackAI-1.0.jar /opt/minecraft/plugins/
+# 플러그인은 각 모드팩의 plugins 폴더에 개별적으로 설치되므로 여기서는 빌드만 수행
 echo -e "${GREEN}✅ 플러그인 업데이트 완료${NC}"
 
 # 서비스 재시작
@@ -62,6 +62,6 @@ fi
 
 echo ""
 echo -e "${BLUE}=== 업데이트 완료 ===${NC}"
-echo "백업 위치: /opt/mc_ai_backend.backup.*"
+echo "백업 위치: $HOME/minecraft-ai-backend.backup.*"
 echo "서버 상태: sudo systemctl status mc-ai-backend"
 echo "로그 확인: sudo journalctl -u mc-ai-backend -f" 

@@ -69,7 +69,7 @@ $ modpack_switch CreateModpack 1.0.0
 /tmp/modpacks/
 
 # 권장 위치 2: 백엔드 업로드 디렉토리
-/opt/mc_ai_backend/uploads/
+$HOME/minecraft-ai-backend/uploads/
 
 # 권장 위치 3: 사용자 홈 디렉토리
 ~/modpacks/
@@ -78,15 +78,13 @@ $ modpack_switch CreateModpack 1.0.0
 #### **디렉토리 생성 및 설정**
 ```bash
 # 디렉토리 생성
-sudo mkdir -p /tmp/modpacks
-sudo mkdir -p /opt/mc_ai_backend/uploads
-sudo mkdir -p ~/modpacks
+mkdir -p /tmp/modpacks
+mkdir -p $HOME/minecraft-ai-backend/uploads
+mkdir -p ~/modpacks
 
 # 권한 설정
-sudo chown -R $USER:$USER /tmp/modpacks
-sudo chown -R $USER:$USER /opt/mc_ai_backend/uploads
-sudo chmod 755 /tmp/modpacks
-sudo chmod 755 /opt/mc_ai_backend/uploads
+chmod 755 /tmp/modpacks
+chmod 755 $HOME/minecraft-ai-backend/uploads
 ```
 
 #### **파일 업로드 방법**
@@ -236,7 +234,7 @@ curl -X POST http://localhost:5000/api/modpack/analyze \
 ```bash
 # .env 파일에 추가
 MODPACK_UPLOAD_DIR=/tmp/modpacks
-MODPACK_BACKUP_DIR=/opt/mc_ai_backend/backups
+MODPACK_BACKUP_DIR=$HOME/minecraft-ai-backend/backups
 ```
 
 ### **2. 자동 파일 정리**
@@ -248,7 +246,7 @@ find /tmp/modpacks -name "*.zip" -mtime +7 -delete
 ### **3. 백업 설정**
 ```bash
 # 모드팩 변경 전 자동 백업
-cp /opt/mc_ai_backend/recipes.db /opt/mc_ai_backend/backups/recipes_$(date +%Y%m%d_%H%M%S).db
+cp $HOME/minecraft-ai-backend/recipes.db $HOME/minecraft-ai-backend/backups/recipes_$(date +%Y%m%d_%H%M%S).db
 ```
 
 ### **4. 모니터링 스크립트**
@@ -278,11 +276,11 @@ done
 ```bash
 # 1. 파일 존재 확인
 ls -la /tmp/modpacks/
-ls -la /opt/mc_ai_backend/uploads/
+ls -la $HOME/minecraft-ai-backend/uploads/
 
 # 2. 파일명 확인
 find /tmp -name "*modpack*" -type f
-find /opt -name "*modpack*" -type f
+find $HOME/minecraft-ai-backend -name "*modpack*" -type f
 
 # 3. 권한 확인
 ls -la /tmp/modpacks/your-modpack.zip
@@ -300,7 +298,7 @@ sudo chown $USER:$USER /tmp/modpacks/your-modpack.zip
 # 디스크 사용량 확인
 df -h
 du -sh /tmp/modpacks/
-du -sh /opt/mc_ai_backend/
+du -sh $HOME/minecraft-ai-backend/
 
 # 불필요한 파일 정리
 sudo apt autoremove -y
@@ -330,6 +328,28 @@ sudo chmod +x /usr/local/bin/modpack_switch
 # 스크립트 재설치
 sudo cp modpack_switch.sh /usr/local/bin/modpack_switch
 sudo chmod +x /usr/local/bin/modpack_switch
+```
+
+### **플러그인 로드 오류**
+```bash
+# 플러그인 파일 확인
+ls -la ~/enigmatica_10/plugins/ModpackAI-1.0.jar
+ls -la ~/integrated_MC/plugins/ModpackAI-1.0.jar
+
+# 권한 수정
+chmod 644 ~/*/plugins/ModpackAI-1.0.jar
+
+# Java 버전 확인
+java -version
+```
+
+### **API 키 오류**
+```bash
+# 환경 변수 확인
+grep API_KEY $HOME/minecraft-ai-backend/.env
+
+# 서비스 재시작
+sudo systemctl restart mc-ai-backend
 ```
 
 ---

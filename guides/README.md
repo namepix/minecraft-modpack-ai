@@ -74,7 +74,7 @@
 ./install.sh
 
 # 2. API 키 설정
-nano /opt/mc_ai_backend/.env
+nano $HOME/minecraft-ai-backend/.env
 
 # 3. 백엔드 서비스 시작
 sudo systemctl start mc-ai-backend
@@ -83,9 +83,12 @@ sudo systemctl start mc-ai-backend
 ### **2단계: 기존 모드팩에 플러그인 추가**
 ```bash
 # 모든 모드팩에 AI 플러그인 추가
-for dir in ~/modpack*; do
-    mkdir -p "$dir/plugins"
-    cp /opt/minecraft/plugins/ModpackAI-1.0.jar "$dir/plugins/"
+for dir in ~/enigmatica_10 ~/integrated_MC ~/atm10 ~/beyond_depth ~/carpg ~/cteserver ~/prominence_2 ~/mnm ~/test; do
+    if [ -d "$dir" ]; then
+        mkdir -p "$dir/plugins"
+        cp minecraft_plugin/target/ModpackAI-1.0.jar "$dir/plugins/"
+        echo "플러그인 추가됨: $dir"
+    fi
 done
 ```
 
