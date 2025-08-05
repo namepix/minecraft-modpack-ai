@@ -16,6 +16,7 @@ from database.recipe_manager import RecipeManager
 from modpack_parser.modpack_analyzer import ModpackAnalyzer
 from utils.language_mapper import LanguageMapper
 from utils.rag_manager import RAGManager
+from utils.config import Config
 
 # 환경 변수 로드
 load_dotenv()
@@ -27,10 +28,13 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 설정 로드
+config = Config()
+
 # Rate limiting을 위한 전역 변수
 request_counts = defaultdict(list)
-RATE_LIMIT = 10  # 1분당 10회 요청
-RATE_WINDOW = 60  # 60초
+RATE_LIMIT = config.get('rate_limit_requests', 10)  # 1분당 요청 수
+RATE_WINDOW = config.get('rate_limit_window_seconds', 60)  # 60초
 
 def rate_limit(f):
     """Rate limiting 데코레이터"""
@@ -75,8 +79,8 @@ def initialize_services():
         language_mapper = LanguageMapper()
         
         # RAG 매니저 초기화 (필수)
-        gcp_project_id = os.getenv('GCP_PROJECT_ID')
-        gcs_bucket_name = os.getenv('GCS_BUCKET_NAME')
+        gcp_project_id = config.get('gcp_project_id')
+        gcs_bucket_name = config.get('gcs_bucket_name')
         
         if not gcp_project_id or not gcs_bucket_name:
             logger.error("❌ RAG 필수 설정 누락!")
@@ -145,17 +149,17 @@ def chat():
         if not data:
             return jsonify({'error': 'JSON 데이터가 필요합니다.'}), 400
         
-        player_uuid = data.get('player_uuid')
+        user_uuid = data.get('user_uuid') or data.get('player_uuid')  # 하위 호환성
         message = data.get('message')
         modpack_name = data.get('modpack_name', 'unknown')
         modpack_version = data.get('modpack_version', '1.0')
         
         # 입력 검증
-        if not player_uuid or not message:
-            return jsonify({'error': 'player_uuid와 message는 필수입니다.'}), 400
+        if not user_uuid or not message:
+            return jsonify({'error': 'user_uuid와 message는 필수입니다.'}), 400
         
         # UUID 형식 검증
-        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', player_uuid):
+        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', user_uuid):
             return jsonify({'error': '올바른 UUID 형식이 아닙니다.'}), 400
         
         # 메시지 길이 제한
@@ -166,7 +170,7 @@ def chat():
         message = re.sub(r'[<>"\']', '', message)
         
         # 이전 대화 기록 가져오기
-        chat_history = chat_manager.get_chat_history(player_uuid, limit=10)
+        chat_history = chat_manager.get_chat_history(user_uuid, limit=10)
         
         # AI 응답 생성
         response = ai_model.generate_response(
@@ -174,11 +178,11 @@ def chat():
             chat_history=chat_history,
             modpack_name=modpack_name,
             modpack_version=modpack_version,
-            user_uuid=player_uuid
+            user_uuid=user_uuid
         )
         
         # 대화 기록 저장
-        chat_manager.save_message(player_uuid, message, response, modpack_name)
+        chat_manager.save_message(user_uuid, message, response, modpack_name)
         
         return jsonify({
             'response': response,
@@ -414,7 +418,7 @@ if __name__ == '__main__':
     initialize_services()
     
     # 서버 실행
-    port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
+    port = config.get('port', 5000)
+    debug = config.get('debug', False)
     
     app.run(host='0.0.0.0', port=port, debug=debug) 

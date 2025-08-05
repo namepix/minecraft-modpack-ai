@@ -763,10 +763,21 @@ free -h
 5. **`./파일명.sh`로 스크립트 실행**
 
 ### **API 키 설정 방법**
-1. **각 서비스 웹사이트에서 API 키 생성**
-2. **`nano $HOME/minecraft-ai-backend/.env`로 파일 열기**
-3. **실제 API 키로 교체**
-4. **Ctrl+X, Y, Enter로 저장**
+
+**🌟 우선순위: Gemini Pro (메인 모델)**
+1. **Google AI Studio (ai.google.dev)에서 API 키 생성** ⭐ 최우선 설정
+2. **GCP VM과 동일한 Google 계정 사용 (무료 크레딧 활용)**
+
+**📖 백업 모델들 (선택사항)**
+3. **OpenAI (platform.openai.com)** - 무료 티어 사용
+4. **Anthropic (console.anthropic.com)** - 무료 티어 사용
+
+**설정 방법:**
+1. **`nano $HOME/minecraft-ai-backend/.env`로 파일 열기**
+2. **실제 API 키로 교체 (특히 GOOGLE_API_KEY는 필수)**
+3. **Ctrl+X, Y, Enter로 저장**
+
+**💡 참고**: Gemini Pro가 기본 모델이므로 GOOGLE_API_KEY만 설정해도 기본 동작합니다!
 
 ### **파일 편집기 사용법**
 - **nano**: 간단한 텍스트 편집기

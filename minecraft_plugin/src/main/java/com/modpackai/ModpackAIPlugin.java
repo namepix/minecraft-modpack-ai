@@ -1,6 +1,7 @@
 package com.modpackai;
 
 import com.modpackai.commands.ModpackAICommand;
+import com.modpackai.commands.AICommand;
 import com.modpackai.gui.AIChatGUI;
 import com.modpackai.gui.ModelSelectionGUI;
 import com.modpackai.gui.RecipeGUI;
@@ -28,13 +29,14 @@ public class ModpackAIPlugin extends JavaPlugin {
         
         // 명령어 등록
         getCommand("modpackai").setExecutor(new ModpackAICommand(this));
+        getCommand("ai").setExecutor(new AICommand(this));
         
         // 이벤트 리스너 등록
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerInteractListener(this), this);
         
-        logger.info("ModpackAI 플러그인이 활성화되었습니다!");
+        getLogger().info("ModpackAI 플러그인이 활성화되었습니다!");
     }
     
     @Override
@@ -87,6 +89,6 @@ public class ModpackAIPlugin extends JavaPlugin {
         aiChatGUI = new AIChatGUI(this);
         recipeGUI = new RecipeGUI(this);
         
-        logger.info("매니저 초기화 완료");
+        getLogger().info("매니저 초기화 완료");
     }
 } 

@@ -93,12 +93,19 @@ public class AIChatGUI {
         }
         
         // 새 메시지 입력 안내
-        ItemStack newMessage = new ItemStack(Material.PAPER);
+        ItemStack newMessage = new ItemStack(Material.WRITABLE_BOOK);
         ItemMeta meta = newMessage.getItemMeta();
-        meta.setDisplayName("§a§l새 메시지 입력");
+        meta.setDisplayName("§a§l💬 AI에게 질문하기");
         meta.setLore(Arrays.asList(
-            "§7채팅창에 §e/modpackai chat <메시지>§7를 입력하세요",
-            "§7예: §e/modpackai chat 철 블록은 어떻게 만들어?"
+            "§7클릭하여 직접 입력하거나",
+            "§7채팅창에 §e/ai <메시지>§7를 입력하세요",
+            "§r",
+            "§e예시 질문들:",
+            "§f• 철 블록은 어떻게 만들어?",
+            "§f• 다이아몬드 검 제작법",
+            "§f• 효율 마법 부여는 뭐야?",
+            "§r",
+            "§a▶ 클릭하여 바로 질문하기"
         ));
         newMessage.setItemMeta(meta);
         inventory.setItem(chatSlot, newMessage);
@@ -108,10 +115,17 @@ public class AIChatGUI {
         // AI 모델 변경 버튼
         ItemStack modelButton = new ItemStack(Material.ENDER_EYE);
         ItemMeta meta = modelButton.getItemMeta();
-        meta.setDisplayName("§b§lAI 모델 변경");
+        meta.setDisplayName("§b§l🤖 AI 모델 변경");
         meta.setLore(Arrays.asList(
-            "§7현재: §f" + getCurrentAIModel(),
-            "§7클릭하여 다른 AI 모델을 선택하세요"
+            "§7현재 모델: §e" + getCurrentAIModel(),
+            "§r",
+            "§7사용 가능한 모델:",
+            "§f• GPT-3.5 Turbo §7(빠름)",
+            "§f• GPT-4 §7(정확함)",
+            "§f• Claude 3 §7(균형)",
+            "§f• Gemini Pro §7(무료)",
+            "§r",
+            "§a▶ 클릭하여 모델 선택"
         ));
         modelButton.setItemMeta(meta);
         inventory.setItem(45, modelButton);

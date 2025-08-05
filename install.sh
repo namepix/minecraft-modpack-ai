@@ -85,23 +85,41 @@ source $HOME/minecraft-ai-env/bin/activate
 # 6. Python 패키지 설치
 log_info "Python 패키지 설치 중..."
 pip install --upgrade pip
-pip install -r requirements.txt
 
-# 7. 환경 변수 파일 설정
+# backend 디렉토리로 이동하여 패키지 설치
+if [ -f "backend/requirements.txt" ]; then
+    pip install -r backend/requirements.txt
+elif [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+else
+    log_error "requirements.txt 파일을 찾을 수 없습니다."
+    exit 1
+fi
+
+# 7. 백엔드 파일 복사
+log_info "백엔드 파일 복사 중..."
+cp -r backend/* $HOME/minecraft-ai-backend/
+
+# 8. 환경 변수 파일 설정
 log_info "환경 변수 파일 설정 중..."
 if [ ! -f $HOME/minecraft-ai-backend/.env ]; then
-    cp env.example $HOME/minecraft-ai-backend/.env
+    if [ -f "env.example" ]; then
+        cp env.example $HOME/minecraft-ai-backend/.env
+    else
+        log_error "env.example 파일을 찾을 수 없습니다."
+        exit 1
+    fi
     log_warning "환경 변수 파일이 생성되었습니다. API 키를 설정해주세요:"
     log_info "nano $HOME/minecraft-ai-backend/.env"
 fi
 
-# 8. 모드팩 스위치 스크립트 설치
+# 9. 모드팩 스위치 스크립트 설치
 log_info "모드팩 스위치 스크립트 설치 중..."
 sudo cp modpack_switch.sh /usr/local/bin/modpack_switch
 sudo chmod +x /usr/local/bin/modpack_switch
 sudo chown $USER:$USER /usr/local/bin/modpack_switch
 
-# 9. systemd 서비스 설정
+# 10. systemd 서비스 설정
 log_info "systemd 서비스 설정 중..."
 sudo tee /etc/systemd/system/mc-ai-backend.service > /dev/null <<EOF
 [Unit]
@@ -113,7 +131,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$HOME/minecraft-ai-backend
 Environment=PATH=$HOME/minecraft-ai-env/bin
-ExecStart=$HOME/minecraft-ai-env/bin/python app.py
+ExecStart=$HOME/minecraft-ai-env/bin/python $HOME/minecraft-ai-backend/app.py
 Restart=always
 RestartSec=10
 
@@ -121,11 +139,11 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# 10. 서비스 활성화
+# 11. 서비스 활성화
 sudo systemctl daemon-reload
 sudo systemctl enable mc-ai-backend
 
-# 11. Minecraft 플러그인 빌드
+# 12. Minecraft 플러그인 빌드
 log_info "Minecraft 플러그인 빌드 중..."
 cd minecraft_plugin
 mvn clean package
@@ -133,25 +151,29 @@ log_info "✅ 플러그인 빌드 완료"
 log_info "플러그인 파일: target/ModpackAI-1.0.jar"
 log_info "각 모드팩의 plugins 폴더에 수동으로 복사하세요"
 
-# 12. 방화벽 설정
+# 13. 방화벽 설정
 log_info "방화벽 설정 중..."
 sudo ufw allow 25565/tcp  # Minecraft 서버
 sudo ufw allow 5000/tcp   # AI 백엔드
 sudo ufw --force enable
 
-# 13. 모니터링 스크립트 설치
+# 14. 모니터링 스크립트 설치
 log_info "모니터링 스크립트 설치 중..."
-sudo cp monitor.sh /usr/local/bin/mc-ai-monitor
-sudo chmod +x /usr/local/bin/mc-ai-monitor
-sudo chown $USER:$USER /usr/local/bin/mc-ai-monitor
+if [ -f "monitor.sh" ]; then
+    sudo cp monitor.sh /usr/local/bin/mc-ai-monitor
+    sudo chmod +x /usr/local/bin/mc-ai-monitor
+    sudo chown $USER:$USER /usr/local/bin/mc-ai-monitor
+fi
 
-# 14. 업데이트 스크립트 설치
+# 15. 업데이트 스크립트 설치
 log_info "업데이트 스크립트 설치 중..."
-sudo cp update.sh /usr/local/bin/mc-ai-update
-sudo chmod +x /usr/local/bin/mc-ai-update
-sudo chown $USER:$USER /usr/local/bin/mc-ai-update
+if [ -f "update.sh" ]; then
+    sudo cp update.sh /usr/local/bin/mc-ai-update
+    sudo chmod +x /usr/local/bin/mc-ai-update
+    sudo chown $USER:$USER /usr/local/bin/mc-ai-update
+fi
 
-# 15. 설치 완료 메시지
+# 16. 설치 완료 메시지
 log_success "설치가 완료되었습니다!"
 echo ""
 echo "🎉 마인크래프트 모드팩 AI 시스템 설치 완료!"

@@ -4,7 +4,7 @@
 
 ## ✨ 주요 기능
 
-- 🤖 **다중 AI 모델 지원**: GPT, Claude, Gemini 중 선택 가능
+- 🤖 **다중 AI 모델 지원**: Gemini Pro (메인, 웹검색), GPT, Claude (백업)
 - 🎯 **모드팩 전문 지식**: 특정 모드팩에 대한 정확한 정보 제공
 - 🛠️ **3x3 제작법 GUI**: 시각적으로 명확한 제작법 표시
 - 💬 **채팅 기록**: 플레이어별 대화 기록 저장
@@ -45,9 +45,12 @@ chmod +x install.sh
 ./install.sh
 ```
 
-### 2. API 키 설정
+### 2. API 키 설정 (Gemini Pro 우선)
 ```bash
 nano $HOME/minecraft-ai-backend/.env
+# 🌟 GOOGLE_API_KEY=your-key (필수, GCP 크레딧 사용)
+# 📖 OPENAI_API_KEY=your-key (선택, 백업용)
+# 📖 ANTHROPIC_API_KEY=your-key (선택, 백업용)
 ```
 
 ### 3. 서비스 시작
@@ -58,10 +61,13 @@ sudo systemctl enable mc-ai-backend
 
 ### 4. 게임 내 사용
 ```
-/modpackai chat          # AI 채팅 시작
-/modpackai recipe <아이템> # 제작법 조회
-/modpackai models        # AI 모델 선택
+/ai 철 블록은 어떻게 만들어?    # AI에게 바로 질문
+/modpackai chat                 # AI GUI 열기
+/modpackai recipe 다이아몬드     # 제작법 조회
+/modpackai models               # AI 모델 선택
 ```
+
+**💡 팁**: AI 아이템을 우클릭하면 바로 채팅창이 열립니다!
 
 ## 📚 상세 가이드
 
@@ -73,14 +79,15 @@ sudo systemctl enable mc-ai-backend
 
 ## 🎮 게임 내 명령어
 
-| 명령어 | 설명 | 권한 |
-|--------|------|------|
-| `/modpackai chat` | AI 채팅 GUI 열기 | 일반 |
-| `/modpackai recipe <아이템>` | 제작법 조회 | 일반 |
-| `/modpackai models` | AI 모델 선택 | 일반 |
-| `/modpackai current` | 현재 AI 모델 정보 | 일반 |
-| `/modpackai switch <모드팩>` | 모드팩 변경 | 관리자 |
-| `/modpackai help` | 도움말 보기 | 일반 |
+| 명령어 | 설명 | 권한 | 예시 |
+|--------|------|------|------|
+| `/ai <질문>` | AI에게 바로 질문 | 일반 | `/ai 철 블록 만드는 법` |
+| `/modpackai chat` | AI 채팅 GUI 열기 | 일반 | `/modpackai chat` |
+| `/modpackai recipe <아이템>` | 제작법 조회 | 일반 | `/modpackai recipe 다이아몬드` |
+| `/modpackai models` | AI 모델 선택 | 일반 | `/modpackai models` |
+| `/modpackai current` | 현재 AI 모델 정보 | 일반 | `/modpackai current` |
+| `/modpackai switch <모드팩>` | 모드팩 변경 | 관리자 | `/modpackai switch FTB` |
+| `/modpackai help` | 도움말 보기 | 일반 | `/modpackai help` |
 
 ## 🤖 지원하는 AI 모델
 

@@ -10,6 +10,10 @@ commands:
     description: 모드팩 AI 어시스턴트 명령어
     usage: /modpackai <chat|recipe|models|current|switch|help>
     permission: modpackai.use
+  ai:
+    description: AI에게 바로 질문하기
+    usage: /ai <질문>
+    permission: modpackai.use
 
 permissions:
   modpackai.use:

@@ -32,7 +32,7 @@ class HybridAIModel:
         
         # AI 모델 설정
         self.available_models = self._get_available_models()
-        self.current_model = os.getenv('DEFAULT_AI_MODEL', 'gpt-3.5-turbo')
+        self.current_model = os.getenv('DEFAULT_AI_MODEL', 'gemini-pro')  # Gemini Pro를 기본 모델로 설정
         
         # AI 클라이언트들 초기화
         self.clients = self._init_ai_clients()
@@ -45,45 +45,58 @@ class HybridAIModel:
     def _get_available_models(self) -> Dict:
         """사용 가능한 AI 모델들을 정의합니다."""
         return {
-            'gpt-3.5-turbo': {
-                'name': 'GPT-3.5 Turbo',
-                'provider': 'openai',
-                'free_tier': True,
-                'max_tokens': 4096,
-                'cost_per_1k_tokens': 0.002,
-                'description': '빠르고 효율적인 OpenAI 모델'
-            },
-            'gpt-4': {
-                'name': 'GPT-4',
-                'provider': 'openai',
-                'free_tier': False,
-                'max_tokens': 8192,
-                'cost_per_1k_tokens': 0.03,
-                'description': '고성능 OpenAI 모델 (유료)'
-            },
-            'claude-3-haiku': {
-                'name': 'Claude 3 Haiku',
-                'provider': 'anthropic',
-                'free_tier': True,
-                'max_tokens': 4096,
-                'cost_per_1k_tokens': 0.00025,
-                'description': '빠르고 경제적인 Anthropic 모델'
-            },
-            'claude-3-sonnet': {
-                'name': 'Claude 3 Sonnet',
-                'provider': 'anthropic',
-                'free_tier': False,
-                'max_tokens': 4096,
-                'cost_per_1k_tokens': 0.003,
-                'description': '균형잡힌 성능의 Anthropic 모델'
-            },
             'gemini-pro': {
-                'name': 'Gemini Pro',
+                'name': 'Gemini Pro (웹검색)',
                 'provider': 'google',
                 'free_tier': True,
+                'web_search': True,  # 웹검색 항상 활성화
                 'max_tokens': 8192,
                 'cost_per_1k_tokens': 0.0005,
-                'description': 'Google의 최신 AI 모델'
+                'description': 'Google의 최신 AI 모델 (웹검색 포함, GCP 크레딧 사용)',
+                'is_main': True  # 메인 모델로 표시
+            },
+            'gpt-3.5-turbo': {
+                'name': 'GPT-3.5 Turbo (무료)',
+                'provider': 'openai',
+                'free_tier': True,
+                'web_search': False,  # 웹검색 비활성화
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.002,
+                'description': '빠르고 효율적인 OpenAI 모델 (무료 티어)',
+                'is_main': False
+            },
+            'claude-3-haiku': {
+                'name': 'Claude 3 Haiku (무료)',
+                'provider': 'anthropic',
+                'free_tier': True,
+                'web_search': False,  # 웹검색 비활성화
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.00025,
+                'description': '빠르고 경제적인 Anthropic 모델 (무료 티어)',
+                'is_main': False
+            },
+            # 유료 모델들 (나중에 활성화 가능)
+            'gpt-4': {
+                'name': 'GPT-4 (유료)',
+                'provider': 'openai',
+                'free_tier': False,
+                'web_search': True,
+                'max_tokens': 8192,
+                'cost_per_1k_tokens': 0.03,
+                'description': '고성능 OpenAI 모델 (유료)',
+                'is_main': False,
+                'enabled': False  # 기본적으로 비활성화
+            },
+            'claude-3-sonnet': {
+                'name': 'Claude 3 Sonnet (유료)',
+                'provider': 'anthropic',
+                'free_tier': False,
+                'web_search': True,
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.003,
+                'description': '균형잡힌 성능의 Anthropic 모델 (유료)',
+                'is_main': False,
+                'enabled': False  # 기본적으로 비활성화
             }
         }
     
@@ -329,11 +342,43 @@ class HybridAIModel:
     def _google_web_search(self, search_prompt: str) -> str:
         """Google Gemini를 사용한 웹검색."""
         try:
+            # Gemini Pro with web search
             model = self.clients['google'].GenerativeModel('gemini-pro')
-            response = model.generate_content(search_prompt)
-            return f"웹검색 결과:\n{response.text.strip()}"
+            
+            # 웹검색을 위한 특별한 프롬프트 구성
+            web_search_prompt = f"""
+다음 마인크래프트 모드팩 관련 질문에 대해 웹에서 최신 정보를 검색하여 답변해주세요:
+
+{search_prompt}
+
+검색할 때 다음 사이트들을 우선적으로 참고해주세요:
+- CurseForge (모드팩 정보)
+- MinecraftWiki (기본 정보)
+- Reddit r/feedthebeast (커뮤니티)
+- 공식 모드 문서
+
+검색 결과를 바탕으로 정확하고 신뢰할 수 있는 정보를 제공해주세요.
+"""
+            
+            response = model.generate_content(
+                web_search_prompt,
+                generation_config={
+                    'temperature': 0.3,
+                    'top_p': 0.8,
+                    'top_k': 40,
+                    'max_output_tokens': 800,
+                }
+            )
+            
+            if response.text:
+                logger.info("✅ Gemini Pro 웹검색 완료")
+                return f"웹검색 결과 (Gemini Pro):\n{response.text.strip()}"
+            else:
+                logger.warning("⚠️ Gemini Pro 웹검색 결과가 비어있음")
+                return ""
+                
         except Exception as e:
-            logger.error(f"Google 웹검색 실패: {e}")
+            logger.error(f"❌ Google 웹검색 실패: {e}")
             return ""
     
     def _translate_korean_to_english(self, korean_name: str, modpack_name: str, user_uuid: str = None) -> Tuple[Optional[str], float, str]:
@@ -435,12 +480,16 @@ class HybridAIModel:
             # 2. RAG 컨텍스트 (필수 - 상세 정보)
             rag_context = self._get_rag_context(processed_message, modpack_name)
             
-            # 3. 웹검색 컨텍스트 (보조 - 최신 정보, 선택적)
+            # 3. 웹검색 컨텍스트 (Gemini Pro에서 항상 활성화)
             web_context = ""
-            # RAG에서 충분한 정보를 찾지 못한 경우에만 웹검색 사용
-            if "관련 문서를 찾을 수 없습니다" in rag_context:
-                logger.info("RAG에서 정보를 찾지 못해 웹검색을 시도합니다.")
+            current_model_info = self.available_models.get(self.current_model, {})
+            web_search_enabled = current_model_info.get('web_search', False)
+            
+            if web_search_enabled:
+                logger.info(f"🌐 {self.current_model}에서 웹검색을 활성화합니다.")
                 web_context = self._get_web_search_context(processed_message, modpack_name)
+            else:
+                logger.info(f"📖 {self.current_model}에서는 웹검색을 사용하지 않습니다.")
             
             # 시스템 프롬프트 구성
             system_prompt = self.system_prompt.format(
