@@ -158,6 +158,42 @@ extract_version_from_file() {
         return 0
     fi
     
+    # 패턴 4: EnigmaticaXXServer-version.zip (Enigmatica 시리즈)
+    if [[ "$filename" =~ Server-([0-9]+\.[0-9]+(\.[0-9]+)?)\.(zip|jar)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
+    # 패턴 5: Beyond Depth-Ver10.10.12-[Server-Pack].zip
+    if [[ "$filename" =~ Ver([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
+    # 패턴 6: Prominence_II_RPG_v3.1.51hf.zip
+    if [[ "$filename" =~ _v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
+    # 패턴 7: Craft to Exile 2 SERVER-0.9.5.zip
+    if [[ "$filename" =~ SERVER-([0-9]+\.[0-9]+(\.[0-9]+)?)\.(zip|jar)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
+    # 패턴 8: MnM_1.11_hf_Serverpack.zip (언더스코어 + hf 등 접미사)
+    if [[ "$filename" =~ _([0-9]+\.[0-9]+)_[a-zA-Z]*_Serverpack\.(zip|jar)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
+    # 패턴 9: CARPG Ultimate V7c Serv.zip (문자 버전)
+    if [[ "$filename" =~ V([0-9]+[a-zA-Z]*)[[:space:]] ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    
     return 1
 }
 
