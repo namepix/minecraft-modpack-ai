@@ -7,7 +7,6 @@ import com.modpackai.gui.ModelSelectionGUI;
 import com.modpackai.gui.RecipeGUI;
 import com.modpackai.listeners.InventoryListener;
 import com.modpackai.listeners.PlayerInteractListener;
-import com.modpackai.listeners.PlayerListener;
 import com.modpackai.managers.AIManager;
 import com.modpackai.managers.ConfigManager;
 import com.modpackai.managers.RecipeManager;
@@ -32,9 +31,8 @@ public class ModpackAIPlugin extends JavaPlugin {
         getCommand("ai").setExecutor(new AICommand(this));
         
         // 이벤트 리스너 등록
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
-        getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerInteractListener(this), this);
+        getServer().getPluginManager().registerEvents(new InventoryListener(this), this);
         
         getLogger().info("ModpackAI 플러그인이 활성화되었습니다!");
     }

@@ -131,7 +131,7 @@ public class AIChatGUI {
         inventory.setItem(45, modelButton);
         
         // 도움말 버튼
-        ItemStack helpButton = new ItemStack(Material.HELP);
+        ItemStack helpButton = new ItemStack(Material.BOOK);
         meta = helpButton.getItemMeta();
         meta.setDisplayName("§e§l도움말");
         meta.setLore(Arrays.asList(
@@ -227,9 +227,8 @@ public class AIChatGUI {
     
     private String getCurrentAIModel() {
         try {
-            String response = aiManager.getCurrentModel();
-            JSONObject jsonResponse = new JSONObject(response);
-            return jsonResponse.getString("name");
+            AIManager.AIModelInfo currentModel = aiManager.getCurrentModel();
+            return currentModel != null ? currentModel.getName() : "알 수 없음";
         } catch (Exception e) {
             return "알 수 없음";
         }

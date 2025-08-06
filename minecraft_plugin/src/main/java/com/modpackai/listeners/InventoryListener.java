@@ -25,7 +25,7 @@ public class InventoryListener implements Listener {
         
         Player player = (Player) event.getWhoClicked();
         Inventory inventory = event.getInventory();
-        String title = inventory.getTitle();
+        String title = event.getView().getTitle();
         
         // AI 모델 선택 GUI 처리
         if (title.equals("§6AI 모델 선택")) {
