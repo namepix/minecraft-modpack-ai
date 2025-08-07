@@ -219,11 +219,28 @@ if [ ! -f "target/ModpackAI-1.0.jar" ]; then
     mvn clean package -X -Dmaven.test.skip=true
 fi
 
-if [ -f "target/ModpackAI-1.0.jar" ]; then
+# 실제로 생성되는 JAR 파일들 확인
+SHADED_JAR="target/modpack-ai-plugin-1.0.0-shaded.jar"
+ORIGINAL_JAR="target/modpack-ai-plugin-1.0.0.jar" 
+MODPACK_JAR="target/ModpackAI-1.0.jar"
+
+if [ -f "$SHADED_JAR" ]; then
+    # shaded JAR 파일을 ModpackAI-1.0.jar로 복사
+    cp "$SHADED_JAR" "target/ModpackAI-1.0.jar"
+    log_success "플러그인 빌드 완료: target/ModpackAI-1.0.jar (from shaded)"
+    PLUGIN_JAR="$PROJECT_DIR/minecraft_plugin/target/ModpackAI-1.0.jar"
+elif [ -f "$ORIGINAL_JAR" ]; then
+    # 원본 JAR 파일을 ModpackAI-1.0.jar로 복사
+    cp "$ORIGINAL_JAR" "target/ModpackAI-1.0.jar"
+    log_success "플러그인 빌드 완료: target/ModpackAI-1.0.jar (from original)"
+    PLUGIN_JAR="$PROJECT_DIR/minecraft_plugin/target/ModpackAI-1.0.jar"
+elif [ -f "$MODPACK_JAR" ]; then
     log_success "플러그인 빌드 완료: target/ModpackAI-1.0.jar"
     PLUGIN_JAR="$PROJECT_DIR/minecraft_plugin/target/ModpackAI-1.0.jar"
 else
-    log_error "플러그인 빌드 실패"
+    log_error "플러그인 빌드 실패 - JAR 파일을 찾을 수 없습니다"
+    log_info "생성된 파일들:"
+    ls -la target/
     exit 1
 fi
 
