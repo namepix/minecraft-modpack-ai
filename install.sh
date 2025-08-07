@@ -319,24 +319,37 @@ EOF
     
     # 모드팩 타입별 하이브리드 서버 설정
     if [[ "$modpack_type" == *"neoforge"* ]]; then
-        # NeoForge 하이브리드 서버 (Youer - MohistMC)
-        if [ ! -f "youer-neoforge.jar" ]; then
-            log_info "  📥 Youer NeoForge 하이브리드 서버 다운로드 중..."
+        # NeoForge 하이브리드 서버 - 현재 활발한 프로젝트들 사용
+        if [ ! -f "neoforge-hybrid.jar" ]; then
+            log_info "  📥 NeoForge 하이브리드 서버 다운로드 중..."
             
-            # Youer (NeoForge) 최신 버전 다운로드 시도
-            if ! wget -q --timeout=30 -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download"; then
-                log_warning "  Youer 다운로드 실패, 대체 서버 시도 중..."
+            # 1순위: Ketting (가장 활발한 NeoForge 하이브리드)
+            if ! wget -q --connect-timeout=10 --timeout=30 -O neoforge-hybrid.jar "https://github.com/kettingpowered/Ketting-1-21-x/releases/latest/download/server.jar"; then
+                log_warning "  Ketting 다운로드 실패, Magma 시도 중..."
                 
-                # 대체: Mohist NeoForge (호환 가능)
-                if ! wget -q --timeout=30 -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.21/builds/latest/download"; then
-                    log_error "  하이브리드 서버 다운로드 실패. 수동 설치 필요"
-                    log_info "  다운로드 URL: https://mohistmc.com/downloads"
-                    continue
+                # 2순위: Magma (NeoForge 지원)
+                if ! wget -q --connect-timeout=10 --timeout=30 -O neoforge-hybrid.jar "https://api.magmafoundation.org/api/v2/latest/download?project=magma&version=1.21"; then
+                    log_warning "  Magma 다운로드 실패, 수동 설치 준비..."
+                    
+                    # 스크립트 진행을 위한 플레이스홀더 파일 생성
+                    echo "# NeoForge 하이브리드 서버 수동 설치 필요" > neoforge-hybrid.jar
+                    log_error "  ❌ NeoForge 하이브리드 서버 자동 다운로드 실패"
+                    log_info "  📋 수동 설치 방법:"
+                    log_info "    1. https://github.com/kettingpowered/Ketting-1-21-x/releases"
+                    log_info "    2. 또는 https://magmafoundation.org/downloads"
+                    log_info "    3. 다운로드 후 neoforge-hybrid.jar로 이름 변경"
+                    log_info "    4. ~/$(basename $(pwd))/ 에 복사"
+                else
+                    log_success "  ✅ Magma NeoForge 하이브리드 다운로드 성공"
                 fi
+            else
+                log_success "  ✅ Ketting NeoForge 하이브리드 다운로드 성공"
             fi
+        else
+            log_info "  ✅ NeoForge 하이브리드 서버 이미 존재"
         fi
         
-        HYBRID_JAR="youer-neoforge.jar"
+        HYBRID_JAR="neoforge-hybrid.jar"
         
         # AI 지원 시작 스크립트 생성
         cat > start_with_ai.sh << 'EOFSCRIPT'
@@ -365,20 +378,32 @@ EOFSCRIPT
         if [[ "$modpack_type" == *"1.16.5"* ]]; then
             if [ ! -f "mohist-1.16.5.jar" ]; then
                 log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
-                if ! wget -q --timeout=30 -O mohist-1.16.5.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"; then
-                    log_error "  Mohist 1.16.5 다운로드 실패"
-                    log_info "  수동 다운로드: https://mohistmc.com/downloads"
-                    continue
+                
+                # GitHub 릴리스에서 1.16.5 버전 다운로드
+                if ! wget -q --timeout=30 -O mohist-1.16.5.jar "https://github.com/MohistMC/Mohist/releases/download/1.16.5-2.0.4/mohist-1.16.5-2.0.4.jar"; then
+                    log_warning "  GitHub에서 1.16.5 다운로드 실패, 빈 파일 생성"
+                    touch mohist-1.16.5.jar
+                    log_error "  Mohist 1.16.5 다운로드 실패 - 수동 설치 필요"
+                    log_info "  1. https://mohistmc.com/downloads 에서 1.16.5 버전 다운로드"
+                    log_info "  2. mohist-1.16.5.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                else
+                    log_success "  Mohist 1.16.5 다운로드 성공"
                 fi
             fi
             HYBRID_JAR="mohist-1.16.5.jar"
         else
             if [ ! -f "mohist-1.20.1.jar" ]; then
                 log_info "  📥 Mohist 1.20.1 하이브리드 서버 다운로드 중..."
-                if ! wget -q --timeout=30 -O mohist-1.20.1.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"; then
-                    log_error "  Mohist 1.20.1 다운로드 실패"
-                    log_info "  수동 다운로드: https://mohistmc.com/downloads"
-                    continue
+                
+                # GitHub 릴리스에서 1.20.1 버전 다운로드
+                if ! wget -q --timeout=30 -O mohist-1.20.1.jar "https://github.com/MohistMC/Mohist/releases/download/1.20.1-2.0.4/mohist-1.20.1-2.0.4.jar"; then
+                    log_warning "  GitHub에서 1.20.1 다운로드 실패, 빈 파일 생성"
+                    touch mohist-1.20.1.jar
+                    log_error "  Mohist 1.20.1 다운로드 실패 - 수동 설치 필요"
+                    log_info "  1. https://mohistmc.com/downloads 에서 1.20.1 버전 다운로드"
+                    log_info "  2. mohist-1.20.1.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                else
+                    log_success "  Mohist 1.20.1 다운로드 성공"
                 fi
             fi
             HYBRID_JAR="mohist-1.20.1.jar"
@@ -409,16 +434,26 @@ EOFSCRIPT
         if [ ! -f "cardboard.jar" ]; then
             log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
             
-            # CardBoard 다운로드 시도 (여러 URL)
-            if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"; then
-                log_warning "  GitHub에서 CardBoard 다운로드 실패, 대체 URL 시도 중..."
+            # CardBoard 다운로드 시도 (실제 작동하는 URL)
+            log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
+            
+            # CardBoard는 더 이상 활발히 개발되지 않아 대안 사용
+            if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
+                log_warning "  CardBoard 다운로드 실패, Banner (대안) 시도 중..."
                 
-                # 대체 URL 시도
-                if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
-                    log_error "  CardBoard 다운로드 실패. 수동 설치 필요"
-                    log_info "  다운로드 URL: https://github.com/CardboardPowered/cardboard/releases"
-                    continue
+                # Banner - Fabric용 대안
+                if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar"; then
+                    log_warning "  Banner 다운로드도 실패, 빈 파일 생성"
+                    touch cardboard.jar
+                    log_error "  Fabric 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
+                    log_info "  1. https://github.com/CardboardPowered/cardboard/releases 또는"
+                    log_info "  2. https://github.com/Dueris/Banner/releases 에서 다운로드"
+                    log_info "  3. cardboard.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                else
+                    log_success "  Banner (Fabric 하이브리드) 다운로드 성공"
                 fi
+            else
+                log_success "  CardBoard 다운로드 성공"
             fi
         fi
         
@@ -480,16 +515,24 @@ log_step "9. 관리 스크립트 설치"
 
 # modpack_switch 스크립트
 if [ -f "$PROJECT_DIR/modpack_switch.sh" ]; then
-    sudo cp "$PROJECT_DIR/modpack_switch.sh" /usr/local/bin/modpack_switch
-    sudo chmod +x /usr/local/bin/modpack_switch
-    log_success "modpack_switch 스크립트 설치 완료"
+    if [ ! -f "/usr/local/bin/modpack_switch" ] || ! cmp -s "$PROJECT_DIR/modpack_switch.sh" /usr/local/bin/modpack_switch; then
+        sudo cp "$PROJECT_DIR/modpack_switch.sh" /usr/local/bin/modpack_switch
+        sudo chmod +x /usr/local/bin/modpack_switch
+        log_success "modpack_switch 스크립트 설치 완료"
+    else
+        log_info "modpack_switch 스크립트 이미 최신 상태"
+    fi
 fi
 
 # 모니터링 스크립트
 if [ -f "$PROJECT_DIR/monitor.sh" ]; then
-    sudo cp "$PROJECT_DIR/monitor.sh" /usr/local/bin/mc-ai-monitor  
-    sudo chmod +x /usr/local/bin/mc-ai-monitor
-    log_success "모니터링 스크립트 설치 완료"
+    if [ ! -f "/usr/local/bin/mc-ai-monitor" ] || ! cmp -s "$PROJECT_DIR/monitor.sh" /usr/local/bin/mc-ai-monitor; then
+        sudo cp "$PROJECT_DIR/monitor.sh" /usr/local/bin/mc-ai-monitor  
+        sudo chmod +x /usr/local/bin/mc-ai-monitor
+        log_success "모니터링 스크립트 설치 완료"
+    else
+        log_info "모니터링 스크립트 이미 최신 상태"
+    fi
 fi
 
 # 방화벽 설정
