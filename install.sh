@@ -319,11 +319,24 @@ EOF
     
     # 모드팩 타입별 하이브리드 서버 설정
     if [[ "$modpack_type" == *"neoforge"* ]]; then
-        # NeoForge 하이브리드 서버 (Arclight)
-        if [ ! -f "arclight-neoforge.jar" ]; then
-            log_info "  📥 Arclight NeoForge 하이브리드 서버 다운로드 중..."
-            wget -q -O arclight-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.21-1.0.5/arclight-neoforge-1.21-1.0.5.jar"
+        # NeoForge 하이브리드 서버 (Youer - MohistMC)
+        if [ ! -f "youer-neoforge.jar" ]; then
+            log_info "  📥 Youer NeoForge 하이브리드 서버 다운로드 중..."
+            
+            # Youer (NeoForge) 최신 버전 다운로드 시도
+            if ! wget -q --timeout=30 -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download"; then
+                log_warning "  Youer 다운로드 실패, 대체 서버 시도 중..."
+                
+                # 대체: Mohist NeoForge (호환 가능)
+                if ! wget -q --timeout=30 -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.21/builds/latest/download"; then
+                    log_error "  하이브리드 서버 다운로드 실패. 수동 설치 필요"
+                    log_info "  다운로드 URL: https://mohistmc.com/downloads"
+                    continue
+                fi
+            fi
         fi
+        
+        HYBRID_JAR="youer-neoforge.jar"
         
         # AI 지원 시작 스크립트 생성
         cat > start_with_ai.sh << 'EOFSCRIPT'
@@ -343,8 +356,8 @@ JVM_ARGS="$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
   -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 \
   -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
 
-echo "Starting with Arclight (NeoForge + Bukkit Hybrid)..."
-java $JVM_ARGS -jar arclight-neoforge.jar nogui
+echo "Starting with Youer (NeoForge + Paper/Bukkit Hybrid)..."
+java $JVM_ARGS -jar youer-neoforge.jar nogui
 EOFSCRIPT
 
     elif [[ "$modpack_type" == *"forge"* ]]; then
@@ -352,13 +365,21 @@ EOFSCRIPT
         if [[ "$modpack_type" == *"1.16.5"* ]]; then
             if [ ! -f "mohist-1.16.5.jar" ]; then
                 log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
-                wget -q -O mohist-1.16.5.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"
+                if ! wget -q --timeout=30 -O mohist-1.16.5.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"; then
+                    log_error "  Mohist 1.16.5 다운로드 실패"
+                    log_info "  수동 다운로드: https://mohistmc.com/downloads"
+                    continue
+                fi
             fi
             HYBRID_JAR="mohist-1.16.5.jar"
         else
             if [ ! -f "mohist-1.20.1.jar" ]; then
                 log_info "  📥 Mohist 1.20.1 하이브리드 서버 다운로드 중..."
-                wget -q -O mohist-1.20.1.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"
+                if ! wget -q --timeout=30 -O mohist-1.20.1.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"; then
+                    log_error "  Mohist 1.20.1 다운로드 실패"
+                    log_info "  수동 다운로드: https://mohistmc.com/downloads"
+                    continue
+                fi
             fi
             HYBRID_JAR="mohist-1.20.1.jar"
         fi
@@ -387,8 +408,21 @@ EOFSCRIPT
         # Fabric 하이브리드 서버 (CardBoard)
         if [ ! -f "cardboard.jar" ]; then
             log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
-            wget -q -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"
+            
+            # CardBoard 다운로드 시도 (여러 URL)
+            if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"; then
+                log_warning "  GitHub에서 CardBoard 다운로드 실패, 대체 URL 시도 중..."
+                
+                # 대체 URL 시도
+                if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
+                    log_error "  CardBoard 다운로드 실패. 수동 설치 필요"
+                    log_info "  다운로드 URL: https://github.com/CardboardPowered/cardboard/releases"
+                    continue
+                fi
+            fi
         fi
+        
+        HYBRID_JAR="cardboard.jar"
         
         # AI 지원 시작 스크립트 생성
         cat > start_with_ai.sh << 'EOFSCRIPT'

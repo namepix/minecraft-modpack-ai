@@ -129,11 +129,20 @@ EOF
     
     # 하이브리드 서버 설치
     if [[ "$modpack_type" == *"neoforge"* ]]; then
-        # NeoForge - Arclight 사용
-        if [ ! -f "arclight-neoforge.jar" ]; then
-            log_info "  📥 Arclight NeoForge 하이브리드 서버 다운로드..."
-            wget -q --show-progress -O arclight-neoforge.jar \
-                "https://github.com/IzzelAliz/Arclight/releases/download/1.21-1.0.5/arclight-neoforge-1.21-1.0.5.jar"
+        # NeoForge - Youer (MohistMC) 사용
+        if [ ! -f "youer-neoforge.jar" ]; then
+            log_info "  📥 Youer NeoForge 하이브리드 서버 다운로드..."
+            
+            # Youer (NeoForge) 최신 버전 다운로드 시도
+            if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download"; then
+                log_warning "  Youer 다운로드 실패, Mohist NeoForge로 대체 시도..."
+                
+                # 대체: Mohist NeoForge
+                if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.21/builds/latest/download"; then
+                    log_error "  하이브리드 서버 다운로드 실패"
+                    continue
+                fi
+            fi
         fi
         
         # AI 지원 시작 스크립트
@@ -169,15 +178,18 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server..."
 
-java $JVM_OPTS -jar arclight-neoforge.jar nogui
+java $JVM_OPTS -jar youer-neoforge.jar nogui
 EOF
         
     elif [[ "$modpack_type" == *"forge-1.16.5"* ]]; then
         # Forge 1.16.5 - Mohist 사용
         if [ ! -f "mohist-1.16.5.jar" ]; then
             log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드..."
-            wget -q --show-progress -O mohist-1.16.5.jar \
-                "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"
+            if ! wget -q --timeout=30 --show-progress -O mohist-1.16.5.jar \
+                "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"; then
+                log_error "  Mohist 1.16.5 다운로드 실패"
+                continue
+            fi
         fi
         
         cat > start_with_ai.sh << 'EOF'
@@ -210,8 +222,11 @@ EOF
         # Forge 1.20.1 - Mohist 사용
         if [ ! -f "mohist-1.20.1.jar" ]; then
             log_info "  📥 Mohist 1.20.1 하이브리드 서버 다운로드..."
-            wget -q --show-progress -O mohist-1.20.1.jar \
-                "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"
+            if ! wget -q --timeout=30 --show-progress -O mohist-1.20.1.jar \
+                "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"; then
+                log_error "  Mohist 1.20.1 다운로드 실패"
+                continue
+            fi
         fi
         
         cat > start_with_ai.sh << 'EOF'
@@ -242,8 +257,15 @@ EOF
         # Fabric - CardBoard 사용
         if [ ! -f "cardboard-1.20.1.jar" ]; then
             log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드..."
-            wget -q --show-progress -O cardboard-1.20.1.jar \
-                "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"
+            if ! wget -q --timeout=30 --show-progress -O cardboard-1.20.1.jar \
+                "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"; then
+                log_warning "  GitHub에서 CardBoard 다운로드 실패, 대체 URL 시도..."
+                if ! wget -q --timeout=30 --show-progress -O cardboard-1.20.1.jar \
+                    "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
+                    log_error "  CardBoard 다운로드 실패"
+                    continue
+                fi
+            fi
         fi
         
         cat > start_with_ai.sh << 'EOF'
