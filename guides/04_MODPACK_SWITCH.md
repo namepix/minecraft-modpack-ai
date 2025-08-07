@@ -1,360 +1,311 @@
-# 🔄 관리자를 위한 모드팩 변경 가이드
+# 🔄 모드팩 변경 가이드
 
 ## 📋 개요
 
-이 가이드는 관리자가 GCP VM Debian에서 마인크래프트 모드팩을 변경하는 방법을 설명합니다.
+이 가이드는 마인크래프트 AI 시스템에서 모드팩을 변경하고 관리하는 방법을 설명합니다.
+현재 시스템은 간소화된 구조로 되어 있어 설정 파일 수정을 통해 쉽게 모드팩을 변경할 수 있습니다.
 
-### **모드팩 변경 방법들**
-1. 🖥️ **CLI 스크립트** (가장 편리한 방법)
-2. 🎮 **게임 내 명령어** (관리자 전용)
-3. 🌐 **백엔드 API 직접 호출** (고급 사용자)
+## 🎯 모드팩 변경 방법
 
----
+### 1. 설정 파일 기반 변경 (권장)
 
-## 🖥️ CLI 스크립트 사용법 (권장)
-
-### **기본 사용법**
-```bash
-# 설정 파일에서 모드팩 정보 읽어서 분석
-modpack_switch
-
-# 특정 모드팩 분석 (버전 자동 추출)
-modpack_switch CreateModpack
-
-# 특정 모드팩과 버전으로 분석
-modpack_switch FTBRevelation 1.0.0
-
-# 사용 가능한 모드팩 목록 확인
-modpack_switch --list
-
-# 도움말 보기
-modpack_switch --help
+**Windows:**
+```cmd
+# .env 파일 편집
+notepad .env
 ```
 
-### **CLI 스크립트 특징**
-- ✅ **설정 파일 기반**: `.env` 파일에서 모드팩 정보 자동 읽기
-- ✅ **자동 버전 추출**: 파일명에서 버전 정보 자동 추출
-- ✅ **단일 모드팩 분석**: 빠르고 효율적인 분석
-- ✅ **자동 설정 업데이트**: 분석 후 설정 파일 자동 업데이트
-- ✅ **백엔드 상태 확인**: 서비스 실행 상태 자동 체크
-- ✅ **상세 결과 표시**: 모드 수, 제작법 수, 아이템 수 등
-- ✅ **색상 출력**: 정보, 성공, 경고, 오류 구분
-
-### **CLI 스크립트 출력 예시**
+**Linux:**
 ```bash
-$ modpack_switch CreateModpack
-
-[INFO] 설정 파일에서 정보 로드:
-[INFO]   모드팩 디렉토리: /tmp/modpacks
-[INFO] 백엔드 서비스 상태 확인 중...
-[SUCCESS] 백엔드 서비스가 정상 실행 중입니다
-[INFO] 모드팩 분석 시작: CreateModpack v1.0.0
-[INFO] 모드팩 파일 검색 중...
-[SUCCESS] 모드팩 파일 발견: /tmp/modpacks/CreateModpack_1.0.0.zip
-[INFO] 파일 크기: 256M
-[INFO] 백엔드에 모드팩 분석 요청 중...
-[SUCCESS] 모드팩 분석이 완료되었습니다!
-
-📊 분석 결과:
-  🎮 모드팩: CreateModpack v1.0.0
-  📦 모드 수: 150
-  🛠️ 제작법 수: 2500
-  🎯 아이템 수: 3000
-  🌐 언어 매핑: 500개 추가
-
-[INFO] 설정 파일이 업데이트되었습니다
-[INFO] 이제 게임 내에서 AI 어시스턴트를 사용할 수 있습니다!
+# .env 파일 편집
+nano .env
 ```
 
----
-
-## ⚠️ 사전 조건 및 준비사항
-
-### **1. 모드팩 파일 업로드**
-
-#### **파일 업로드 위치**
-모드팩 파일을 다음 디렉토리에 업로드하세요:
-```bash
-/tmp/modpacks/
-```
-
-#### **업로드 방법**
-```bash
-# SCP 사용 (로컬에서 서버로)
-scp your-modpack.zip username@server-ip:/tmp/modpacks/
-
-# SFTP 사용
-sftp username@server-ip
-cd /tmp/modpacks/
-put your-modpack.zip
-
-# 직접 복사 (서버에서)
-cp /path/to/your-modpack.zip /tmp/modpacks/
-```
-
-#### **지원하는 파일 형식**
-- `.zip` 파일
-- `.jar` 파일
-
-#### **파일명 규칙**
-스크립트는 다음 패턴의 파일명에서 버전을 자동 추출합니다:
-- `modpack_name_version.zip` (예: `CreateModpack_1.0.0.zip`)
-- `modpack_name-version.zip` (예: `CreateModpack-1.0.0.zip`)
-- `modpack_name version.zip` (예: `CreateModpack 1.0.0.zip`)
-
-### **2. 백엔드 서비스 확인**
-```bash
-# 백엔드 서비스 상태 확인
-sudo systemctl status mc-ai-backend
-
-# 서비스가 실행되지 않은 경우 시작
-sudo systemctl start mc-ai-backend
-```
-
-### **3. 설정 파일 확인**
-```bash
-# 설정 파일 확인
-cat $HOME/minecraft-ai-backend/.env | grep MODPACK
-```
-
----
-
-## 🔧 상세 사용법
-
-### **방법 1: 설정 파일 기반 분석**
-```bash
-# .env 파일에 모드팩 정보 설정
-nano $HOME/minecraft-ai-backend/.env
-
-# 다음 내용 추가/수정:
-CURRENT_MODPACK_NAME=CreateModpack
+**설정 내용 수정:**
+```env
+# 현재 모드팩 정보
+CURRENT_MODPACK_NAME=enigmatica_10
 CURRENT_MODPACK_VERSION=1.0.0
 
-# 설정 파일에서 정보를 읽어서 분석
-modpack_switch
+# 백엔드 서버 설정
+PORT=5000
+DEBUG=false
 ```
 
-### **방법 2: 명령행 인수로 분석**
+### 2. 스크립트를 통한 변경
+
+**modpack_switch.sh 스크립트 사용:**
+
+**기본 사용법:**
 ```bash
-# 모드팩명만 지정 (버전 자동 추출)
-modpack_switch CreateModpack
+# Linux
+./modpack_switch.sh
 
-# 모드팩명과 버전 모두 지정
-modpack_switch FTBRevelation 1.0.0
+# Windows (Git Bash 또는 WSL)
+./modpack_switch.sh
 ```
 
-### **방법 3: 파일명에서 버전 추출**
-파일명에 버전이 포함되어 있으면 자동으로 추출됩니다:
+**특정 모드팩 지정:**
 ```bash
-# 파일: CreateModpack_1.0.0.zip
-modpack_switch CreateModpack
-# → 자동으로 버전 1.0.0 추출
-
-# 파일: FTBRevelation-2.0.1.zip
-modpack_switch FTBRevelation
-# → 자동으로 버전 2.0.1 추출
+./modpack_switch.sh FTB_Revelations 3.5.0
+./modpack_switch.sh Create_Above_and_Beyond 1.3.1
+./modpack_switch.sh All_The_Mods_10 1.0.0
 ```
 
----
+## 🛠️ Minecraft 플러그인 설정
 
-## 📊 분석 결과 해석
+### 1. 플러그인 설정 파일
 
-### **분석 결과 예시**
-```
-📊 분석 결과:
-  🎮 모드팩: CreateModpack v1.0.0
-  📦 모드 수: 150
-  🛠️ 제작법 수: 2500
-  🎯 아이템 수: 3000
-  🌐 언어 매핑: 500개 추가
-```
+**위치**: `minecraft_plugin/src/main/resources/config.yml`
 
-### **결과 항목 설명**
-- **모드팩**: 분석된 모드팩의 이름과 버전
-- **모드 수**: 모드팩에 포함된 모드의 개수
-- **제작법 수**: 추출된 제작법의 개수
-- **아이템 수**: 추출된 아이템의 개수
-- **언어 매핑**: 자동 생성된 한국어-영어 매핑 개수
+```yaml
+# AI 서버 설정
+ai:
+  server_url: "http://localhost:5000"
+  modpack_name: "enigmatica_10"      # 현재 모드팩명
+  modpack_version: "1.0"             # 현재 버전
 
----
-
-## 🔄 모드팩 변경 워크플로우
-
-### **1. 새 모드팩 준비**
-```bash
-# 1. 모드팩 파일을 /tmp/modpacks/에 업로드
-scp new-modpack.zip username@server-ip:/tmp/modpacks/
-
-# 2. 업로드된 파일 확인
-ls -la /tmp/modpacks/
+# AI 어시스턴트 아이템 설정
+ai_item:
+  material: "BOOK"
+  name: "§6§l모드팩 AI 어시스턴트"
 ```
 
-### **2. 모드팩 분석**
-```bash
-# 방법 1: 설정 파일 업데이트 후 분석
-nano $HOME/minecraft-ai-backend/.env
-# CURRENT_MODPACK_NAME=new-modpack 추가
-modpack_switch
+### 2. 서버별 설정
 
-# 방법 2: 직접 분석
-modpack_switch new-modpack 1.0.0
+각 마인크래프트 서버의 `plugins/ModpackAI/config.yml`에서 개별 설정 가능:
+
+```yaml
+ai:
+  server_url: "http://localhost:5000"
+  modpack_name: "create_above_and_beyond"  # 서버별 모드팩
+  modpack_version: "1.3.1"
 ```
 
-### **3. 게임 서버 시작**
-```bash
-# 해당 모드팩 서버 시작
-cd ~/new-modpack
-./start.sh
+## 📊 지원하는 모드팩 목록
+
+### 1. 인기 모드팩들
+
+| 모드팩명 | 설정값 | 최신 버전 | 특징 |
+|----------|--------|-----------|------|
+| Enigmatica 10 | `enigmatica_10` | 1.0.0 | 종합 모드팩 |
+| All The Mods 10 | `atm10` | 1.0.0 | 대용량 모드팩 |
+| Create: Above and Beyond | `create_above_and_beyond` | 1.3.1 | Create 중심 |
+| FTB Revelation | `ftb_revelation` | 3.5.0 | 안정적인 종합팩 |
+| Prominence II | `prominence_2` | 2.6.0 | RPG 요소 |
+| Medieval Minecraft | `medieval_mc` | 1.5.1 | 중세 테마 |
+
+### 2. 설정 예시
+
+**Enigmatica 10:**
+```env
+CURRENT_MODPACK_NAME=enigmatica_10
+CURRENT_MODPACK_VERSION=1.0.0
 ```
 
-### **4. 게임 내 테스트**
-```bash
-# 게임 내에서 AI 어시스턴트 테스트
-/modpackai help
-/give @p nether_star 1
+**Create: Above and Beyond:**
+```env
+CURRENT_MODPACK_NAME=create_above_and_beyond  
+CURRENT_MODPACK_VERSION=1.3.1
 ```
 
----
+**All The Mods 10:**
+```env
+CURRENT_MODPACK_NAME=atm10
+CURRENT_MODPACK_VERSION=1.0.0
+```
+
+## 🔧 모드팩별 AI 최적화
+
+### 1. 시스템 프롬프트 맞춤화
+
+`config/config.yaml`에서 모드팩별 프롬프트 설정:
+
+```yaml
+ai:
+  system_prompt_template: |
+    당신은 {modpack_name} v{modpack_version} 전문 AI 어시스턴트입니다.
+    
+    현재 모드팩의 주요 특징:
+    - Create 모드 중심의 기계화 및 자동화
+    - 건축 및 장식 요소 강화
+    - 탐험과 모험 컨텐츠 풍부
+    
+    답변 시 이 모드팩의 특성을 고려하여 조언해주세요.
+```
+
+### 2. 모드팩별 특화 정보
+
+**Create 중심 모드팩 (Create: Above and Beyond):**
+```yaml
+ai:
+  specialized_knowledge:
+    - "Create 모드 기계류 제작 및 사용법"
+    - "동력 전달 시스템 (Kinetic Energy)"
+    - "자동화 시스템 구축"
+    - "장식용 블록과 건축 기법"
+```
+
+**Magic 중심 모드팩 (Enigmatica):**
+```yaml
+ai:
+  specialized_knowledge:
+    - "마법 모드 (Botania, Blood Magic, Astral Sorcery)"
+    - "기술 모드와 마법 모드 연계"
+    - "복합 자동화 시스템"
+    - "차원 간 이동 및 탐험"
+```
+
+## 🎮 게임 내 모드팩 정보 확인
+
+### 1. 명령어로 확인
+
+```
+/modpackai current        # 현재 설정된 모드팩 정보
+/modpackai version        # AI 시스템 버전 및 모드팩 정보
+```
+
+### 2. GUI에서 확인
+
+AI 채팅 창을 열면 상단에 현재 모드팩 정보가 표시됩니다:
+```
+🤖 모드팩 AI 어시스턴트 - Enigmatica 10 v1.0.0
+```
+
+## 📝 모드팩 변경 체크리스트
+
+### 1. 변경 전 준비
+
+- [ ] 현재 모드팩 백업 (선택사항)
+- [ ] 새 모드팩의 버전 정보 확인
+- [ ] AI 시스템 서비스 중지
+
+### 2. 설정 변경
+
+- [ ] `.env` 파일에서 모드팩 정보 업데이트
+- [ ] `config/config.yaml`에서 특화 설정 적용
+- [ ] 플러그인 `config.yml` 업데이트
+
+### 3. 변경 후 확인
+
+- [ ] 백엔드 서비스 재시작
+- [ ] 마인크래프트 서버 플러그인 리로드
+- [ ] `/modpackai current`로 변경 확인
+- [ ] AI 응답 테스트
 
 ## 🚨 문제 해결
 
-### **모드팩 파일을 찾을 수 없는 경우**
+### 1. 모드팩 변경이 반영되지 않을 때
+
+**확인사항:**
+1. `.env` 파일의 변경사항 저장 여부
+2. 백엔드 서비스 재시작 여부
+3. 플러그인 설정 파일 업데이트 여부
+
+**해결 방법:**
 ```bash
-# 1. 파일 존재 확인
-ls -la /tmp/modpacks/
+# Windows
+cd backend
+python app.py  # 수동 재시작
 
-# 2. 파일명 확인
-modpack_switch --list
-
-# 3. 파일명 수정 (필요한 경우)
-mv /tmp/modpacks/old-name.zip /tmp/modpacks/CreateModpack_1.0.0.zip
-```
-
-### **백엔드 서비스 오류**
-```bash
-# 1. 서비스 상태 확인
-sudo systemctl status mc-ai-backend
-
-# 2. 서비스 재시작
+# Linux
 sudo systemctl restart mc-ai-backend
-
-# 3. 로그 확인
-sudo journalctl -u mc-ai-backend -f
+sudo systemctl status mc-ai-backend
 ```
 
-### **버전 추출 실패**
+### 2. AI가 이전 모드팩 정보로 답변할 때
+
+**원인**: 설정이 제대로 반영되지 않음
+
+**해결 방법:**
+1. 백엔드 완전 재시작
+2. 플러그인 리로드: `/reload confirm`
+3. 브라우저에서 `http://localhost:5000/health` 확인
+
+### 3. 새 모드팩 정보를 AI가 모를 때
+
+**해결 방법:**
+- Gemini 2.5 Pro의 웹검색 기능이 자동으로 최신 정보 검색
+- 직접 질문: `/ai 이 모드팩의 주요 모드와 특징을 알려줘`
+
+## 📊 성능 최적화
+
+### 1. 모드팩별 응답 최적화
+
+**대용량 모드팩 (ATM, Enigmatica):**
+```yaml
+ai:
+  max_tokens: 1500  # 더 자세한 답변
+  temperature: 0.6  # 정확성 중시
+```
+
+**특화 모드팩 (Create, Botania):**
+```yaml
+ai:
+  max_tokens: 1000  # 간결한 답변
+  temperature: 0.8  # 창의적 답변
+```
+
+### 2. 캐싱 최적화
+
+```yaml
+cost_optimization:
+  # 모드팩별 캐시 설정
+  cache_duration_hours: 
+    general_questions: 24
+    recipe_queries: 12
+    modpack_specific: 6
+```
+
+## 🔮 고급 설정
+
+### 1. 다중 모드팩 지원
+
+하나의 AI 시스템으로 여러 모드팩 서버 지원:
+
+```yaml
+# 서버별 설정
+servers:
+  server1:
+    modpack_name: "enigmatica_10"
+    port: 25565
+  server2:  
+    modpack_name: "create_above_and_beyond"
+    port: 25566
+```
+
+### 2. 자동 모드팩 감지
+
+마인크래프트 서버의 모드 목록을 읽어서 자동으로 모드팩 식별:
+
+```python
+# 향후 구현 예정 기능
+def detect_modpack_from_mods():
+    """설치된 모드 목록으로 모드팩 자동 식별"""
+    pass
+```
+
+## 📚 참고 자료
+
+### 1. 모드팩 공식 사이트
+
+- **CurseForge**: https://www.curseforge.com/minecraft/modpacks
+- **FTB App**: https://www.feed-the-beast.com/
+- **Modrinth**: https://modrinth.com/modpacks
+
+### 2. 모드팩 버전 확인
+
 ```bash
-# 1. 파일명에서 버전 추출 시도
-modpack_switch CreateModpack
-# → "버전을 추출할 수 없어 기본값(1.0)을 사용합니다" 메시지
-
-# 2. 수동으로 버전 지정
-modpack_switch CreateModpack 1.0.0
+# 모드팩 매니페스트 파일에서 버전 정보 추출
+# manifest.json 또는 modpack.json 파일 확인
 ```
 
-### **권한 오류**
-```bash
-# 1. 파일 권한 확인
-ls -la /tmp/modpacks/
+### 3. 커뮤니티 가이드
 
-# 2. 권한 수정
-sudo chmod 644 /tmp/modpacks/*.zip
-sudo chmod 644 /tmp/modpacks/*.jar
-```
+- **Reddit**: r/feedthebeast
+- **Discord**: 각 모드팩별 공식 디스코드
+- **Wiki**: 모드팩별 위키 페이지
 
 ---
 
-## 📝 설정 파일 관리
-
-### **설정 파일 위치**
-```bash
-$HOME/minecraft-ai-backend/.env
-```
-
-### **모드팩 관련 설정**
-```bash
-# 현재 사용할 모드팩 이름
-CURRENT_MODPACK_NAME=CreateModpack
-
-# 현재 사용할 모드팩 버전
-CURRENT_MODPACK_VERSION=1.0.0
-
-# 모드팩 업로드 디렉토리
-MODPACK_UPLOAD_DIR=/tmp/modpacks
-```
-
-### **설정 파일 자동 업데이트**
-`modpack_switch` 명령어를 실행하면 다음 정보가 자동으로 업데이트됩니다:
-- `CURRENT_MODPACK_NAME`: 분석된 모드팩 이름
-- `CURRENT_MODPACK_VERSION`: 분석된 모드팩 버전
-
----
-
-## 🎮 게임 내 모드팩 변경 (관리자 전용)
-
-### **게임 내 명령어**
-```bash
-# 모드팩 변경 (관리자만)
-/modpackai switch <모드팩명> [버전]
-
-# 예시
-/modpackai switch CreateModpack
-/modpackai switch FTBRevelation 1.0.0
-```
-
-### **권한 설정**
-```bash
-# 관리자 권한 부여
-/op <플레이어명>
-# 또는
-/lp user <플레이어명> permission set modpackai.admin true
-```
-
----
-
-## 🌐 API 직접 호출 (고급 사용자)
-
-### **모드팩 변경 API**
-```bash
-curl -X POST http://localhost:5000/api/modpack/switch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "modpack_path": "/tmp/modpacks/CreateModpack_1.0.0.zip",
-    "modpack_name": "CreateModpack",
-    "modpack_version": "1.0.0"
-  }'
-```
-
-### **응답 예시**
-```json
-{
-  "message": "모드팩 CreateModpack v1.0.0로 성공적으로 변경되었습니다.",
-  "analysis_result": {
-    "modpack_name": "CreateModpack",
-    "mods_count": 150,
-    "recipes_count": 2500,
-    "items_count": 3000
-  },
-  "language_mappings_added": 500,
-  "rag_updated": true
-}
-```
-
----
-
-## 📋 체크리스트
-
-### **모드팩 변경 전**
-- [ ] 모드팩 파일이 `/tmp/modpacks/`에 업로드됨
-- [ ] 백엔드 서비스가 정상 실행 중
-- [ ] 파일 권한이 올바르게 설정됨
-
-### **모드팩 변경 후**
-- [ ] 분석이 성공적으로 완료됨
-- [ ] 설정 파일이 자동 업데이트됨
-- [ ] 게임 서버에서 AI 어시스턴트 테스트
-- [ ] 제작법 조회 기능 테스트
-
----
-
-**🎮 이제 새로운 모드팩으로 AI 어시스턴트를 사용할 수 있습니다!** 🚀 
+**🎮 모드팩 변경을 통해 더 다양한 AI 어시스턴트 경험을 즐기세요!** 🚀
