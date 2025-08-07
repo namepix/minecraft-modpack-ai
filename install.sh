@@ -319,45 +319,59 @@ EOF
     
     # 모드팩 타입별 하이브리드 서버 설정
     if [[ "$modpack_type" == *"neoforge"* ]]; then
-        # NeoForge 하이브리드 서버 - 현재 활발한 프로젝트들 사용
-        if [ ! -f "neoforge-hybrid.jar" ]; then
+        # NeoForge 하이브리드 서버
+        if [ ! -f "youer-neoforge.jar" ]; then
             log_info "  📥 NeoForge 하이브리드 서버 다운로드 중..."
             
-            # 1순위: Ketting (가장 활발한 NeoForge 하이브리드)
-            if ! wget -q --connect-timeout=10 --timeout=30 -O neoforge-hybrid.jar "https://github.com/kettingpowered/Ketting-1-21-x/releases/latest/download/server.jar"; then
-                log_warning "  Ketting 다운로드 실패, Magma 시도 중..."
-                
-                # 2순위: Magma (NeoForge 지원)
-                if ! wget -q --connect-timeout=10 --timeout=30 -O neoforge-hybrid.jar "https://api.magmafoundation.org/api/v2/latest/download?project=magma&version=1.21"; then
-                    log_warning "  Magma 다운로드 실패, 수동 설치 준비..."
-                    
-                    # 스크립트 진행을 위한 플레이스홀더 파일 생성
-                    echo "# NeoForge 하이브리드 서버 수동 설치 필요" > neoforge-hybrid.jar
-                    log_error "  ❌ NeoForge 하이브리드 서버 자동 다운로드 실패"
-                    log_info "  📋 수동 설치 방법:"
-                    log_info "    1. https://github.com/kettingpowered/Ketting-1-21-x/releases"
-                    log_info "    2. 또는 https://magmafoundation.org/downloads"
-                    log_info "    3. 다운로드 후 neoforge-hybrid.jar로 이름 변경"
-                    log_info "    4. ~/$(basename $(pwd))/ 에 복사"
+            # 버전별 다운로드
+            if [[ "$modpack_type" == *"1.20.1"* ]] || [[ "$modpack" == "enigmatica_9e" ]]; then
+                # 1.20.1 NeoForge
+                log_info "  다운로드 중: NeoForge 1.20.1 (Youer)"
+                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versions/1.20.1/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Youer NeoForge 1.20.1 다운로드 성공"
+                elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.20.1/arclight-neoforge-1.20.1.jar" 2>/dev/null; then
+                    log_success "  ✅ Arclight NeoForge 1.20.1 다운로드 성공 (대안)"
                 else
-                    log_success "  ✅ Magma NeoForge 하이브리드 다운로드 성공"
+                    log_warning "  자동 다운로드 실패, 빈 파일 생성"
+                    echo "# NeoForge 1.20.1 하이브리드 서버 수동 설치 필요" > youer-neoforge.jar
                 fi
             else
-                log_success "  ✅ Ketting NeoForge 하이브리드 다운로드 성공"
+                # 1.21 NeoForge
+                log_info "  다운로드 중: NeoForge 1.21 (Youer)"
+                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Youer NeoForge 1.21 다운로드 성공"
+                elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.21.1/arclight-neoforge-1.21.1.jar" 2>/dev/null; then
+                    log_success "  ✅ Arclight NeoForge 1.21 다운로드 성공 (대안)"
+                else
+                    log_warning "  자동 다운로드 실패, 빈 파일 생성"
+                    echo "# NeoForge 1.21 하이브리드 서버 수동 설치 필요" > youer-neoforge.jar
+                fi
+            fi
+            
+            # 다운로드 성공 여부 확인
+            if [ -s "youer-neoforge.jar" ] && [ $(stat -c%s "youer-neoforge.jar") -gt 1000 ]; then
+                log_success "  ✅ NeoForge 하이브리드 서버 설치 완료"
+            else
+                log_error "  ❌ NeoForge 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
+                log_info "  📋 수동 설치 방법:"
+                log_info "    1. https://mohistmc.com/downloads (Youer 또는 Mohist)"
+                log_info "    2. 또는 https://github.com/IzzelAliz/Arclight/releases (Arclight)"
+                log_info "    3. 다운로드 후 youer-neoforge.jar로 이름 변경"
+                log_info "    4. ~/$(basename $(pwd))/ 에 복사"
             fi
         else
             log_info "  ✅ NeoForge 하이브리드 서버 이미 존재"
         fi
         
-        HYBRID_JAR="neoforge-hybrid.jar"
+        HYBRID_JAR="youer-neoforge.jar"
         
         # AI 지원 시작 스크립트 생성
         cat > start_with_ai.sh << 'EOFSCRIPT'
 #!/bin/bash
-echo "🚀 Starting modpack with AI Assistant..."
+echo "🚀 Starting $(basename $(pwd)) with AI Assistant (NeoForge Hybrid)..."
 
-# 메모리 설정 (VM 사양에 맞게 조정)
-MEMORY="-Xms4G -Xmx8G"
+# 메모리 설정 (GCP VM 사양에 맞게 조정)
+MEMORY="-Xms6G -Xmx10G"
 
 # JVM 최적화 옵션
 JVM_ARGS="$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
@@ -369,8 +383,18 @@ JVM_ARGS="$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
   -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 \
   -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
 
-echo "Starting with Youer (NeoForge + Paper/Bukkit Hybrid)..."
-java $JVM_ARGS -jar youer-neoforge.jar nogui
+echo "Java version: $(java -version 2>&1 | head -n1)"
+echo "Memory: $MEMORY"
+echo "Starting with Youer/Arclight (NeoForge + Bukkit Hybrid)..."
+
+# 하이브리드 서버 존재 여부 확인
+if [ -f "youer-neoforge.jar" ] && [ $(stat -c%s "youer-neoforge.jar") -gt 1000 ]; then
+    java $JVM_ARGS -jar youer-neoforge.jar nogui
+else
+    echo "❌ 하이브리드 서버 파일이 없거나 손상되었습니다."
+    echo "수동으로 youer-neoforge.jar 파일을 설치하세요."
+    echo "가이드: guides/01_ADMIN_SETUP.md 참조"
+fi
 EOFSCRIPT
 
     elif [[ "$modpack_type" == *"forge"* ]]; then
@@ -379,15 +403,18 @@ EOFSCRIPT
             if [ ! -f "mohist-1.16.5.jar" ]; then
                 log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
                 
-                # GitHub 릴리스에서 1.16.5 버전 다운로드
-                if ! wget -q --timeout=30 -O mohist-1.16.5.jar "https://github.com/MohistMC/Mohist/releases/download/1.16.5-2.0.4/mohist-1.16.5-2.0.4.jar"; then
-                    log_warning "  GitHub에서 1.16.5 다운로드 실패, 빈 파일 생성"
-                    touch mohist-1.16.5.jar
-                    log_error "  Mohist 1.16.5 다운로드 실패 - 수동 설치 필요"
-                    log_info "  1. https://mohistmc.com/downloads 에서 1.16.5 버전 다운로드"
-                    log_info "  2. mohist-1.16.5.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                # 최신 API 사용
+                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O mohist-1.16.5.jar "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Mohist 1.16.5 다운로드 성공"
                 else
-                    log_success "  Mohist 1.16.5 다운로드 성공"
+                    log_warning "  API 다운로드 실패, GitHub 릴리스 시도 중..."
+                    if wget -q --connect-timeout=15 --timeout=45 --show-progress -O mohist-1.16.5.jar "https://github.com/MohistMC/Mohist/releases/download/1.16.5-2.0.4/mohist-1.16.5-2.0.4.jar" 2>/dev/null; then
+                        log_success "  ✅ Mohist 1.16.5 GitHub 다운로드 성공"
+                    else
+                        echo "# Mohist 1.16.5 하이브리드 서버 수동 설치 필요" > mohist-1.16.5.jar
+                        log_error "  ❌ Mohist 1.16.5 다운로드 실패 - 수동 설치 필요"
+                        log_info "  📋 수동 설치: https://mohistmc.com/downloads → 1.16.5 → mohist-1.16.5.jar"
+                    fi
                 fi
             fi
             HYBRID_JAR="mohist-1.16.5.jar"
@@ -395,15 +422,18 @@ EOFSCRIPT
             if [ ! -f "mohist-1.20.1.jar" ]; then
                 log_info "  📥 Mohist 1.20.1 하이브리드 서버 다운로드 중..."
                 
-                # GitHub 릴리스에서 1.20.1 버전 다운로드
-                if ! wget -q --timeout=30 -O mohist-1.20.1.jar "https://github.com/MohistMC/Mohist/releases/download/1.20.1-2.0.4/mohist-1.20.1-2.0.4.jar"; then
-                    log_warning "  GitHub에서 1.20.1 다운로드 실패, 빈 파일 생성"
-                    touch mohist-1.20.1.jar
-                    log_error "  Mohist 1.20.1 다운로드 실패 - 수동 설치 필요"
-                    log_info "  1. https://mohistmc.com/downloads 에서 1.20.1 버전 다운로드"
-                    log_info "  2. mohist-1.20.1.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                # 최신 API 사용
+                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O mohist-1.20.1.jar "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Mohist 1.20.1 다운로드 성공"
                 else
-                    log_success "  Mohist 1.20.1 다운로드 성공"
+                    log_warning "  API 다운로드 실패, GitHub 릴리스 시도 중..."
+                    if wget -q --connect-timeout=15 --timeout=45 --show-progress -O mohist-1.20.1.jar "https://github.com/MohistMC/Mohist/releases/download/1.20.1-2.0.4/mohist-1.20.1-2.0.4.jar" 2>/dev/null; then
+                        log_success "  ✅ Mohist 1.20.1 GitHub 다운로드 성공"
+                    else
+                        echo "# Mohist 1.20.1 하이브리드 서버 수동 설치 필요" > mohist-1.20.1.jar
+                        log_error "  ❌ Mohist 1.20.1 다운로드 실패 - 수동 설치 필요"
+                        log_info "  📋 수동 설치: https://mohistmc.com/downloads → 1.20.1 → mohist-1.20.1.jar"
+                    fi
                 fi
             fi
             HYBRID_JAR="mohist-1.20.1.jar"
@@ -430,30 +460,35 @@ java \$JVM_ARGS -jar $HYBRID_JAR nogui
 EOFSCRIPT
 
     elif [[ "$modpack_type" == *"fabric"* ]]; then
-        # Fabric 하이브리드 서버 (CardBoard)
+        # Fabric 하이브리드 서버 (CardBoard/Banner)
         if [ ! -f "cardboard.jar" ]; then
-            log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
+            log_info "  📥 Fabric 하이브리드 서버 다운로드 중..."
             
-            # CardBoard 다운로드 시도 (실제 작동하는 URL)
-            log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
-            
-            # CardBoard는 더 이상 활발히 개발되지 않아 대안 사용
-            if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
-                log_warning "  CardBoard 다운로드 실패, Banner (대안) 시도 중..."
-                
-                # Banner - Fabric용 대안
-                if ! wget -q --timeout=30 -O cardboard.jar "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar"; then
-                    log_warning "  Banner 다운로드도 실패, 빈 파일 생성"
-                    touch cardboard.jar
-                    log_error "  Fabric 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
-                    log_info "  1. https://github.com/CardboardPowered/cardboard/releases 또는"
-                    log_info "  2. https://github.com/Dueris/Banner/releases 에서 다운로드"
-                    log_info "  3. cardboard.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
-                else
-                    log_success "  Banner (Fabric 하이브리드) 다운로드 성공"
-                fi
+            # 1순위: CardBoard (안정적인 릴리스)
+            if wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar" 2>/dev/null; then
+                log_success "  ✅ CardBoard 1.20.1 다운로드 성공"
             else
-                log_success "  CardBoard 다운로드 성공"
+                log_warning "  CardBoard 다운로드 실패, Banner 시도 중..."
+                
+                # 2순위: Banner - 활발한 Fabric 하이브리드 대안
+                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar" 2>/dev/null; then
+                    log_success "  ✅ Banner (Fabric 하이브리드) 다운로드 성공"
+                else
+                    log_warning "  Banner 다운로드도 실패, 수동 설치 준비"
+                    echo "# Fabric 하이브리드 서버 수동 설치 필요" > cardboard.jar
+                    log_error "  ❌ Fabric 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
+                    log_info "  📋 수동 설치 옵션:"
+                    log_info "    1. https://github.com/CardboardPowered/cardboard/releases (CardBoard)"
+                    log_info "    2. https://github.com/Dueris/Banner/releases (Banner)"
+                    log_info "    3. cardboard.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
+                fi
+            fi
+            
+            # 다운로드 성공 여부 확인
+            if [ -s "cardboard.jar" ] && [ $(stat -c%s "cardboard.jar") -gt 1000 ]; then
+                log_success "  ✅ Fabric 하이브리드 서버 설치 완료"
+            else
+                log_error "  ❌ Fabric 하이브리드 서버 파일이 손상되었습니다"
             fi
         fi
         
@@ -537,14 +572,34 @@ fi
 
 # 방화벽 설정
 log_step "10. 방화벽 설정"
-log_info "UFW 방화벽 규칙 설정 중..."
+log_info "방화벽 규칙 설정 중..."
 
-sudo ufw allow 22/tcp      # SSH
-sudo ufw allow 25565/tcp   # Minecraft 기본 포트
-sudo ufw allow 5000/tcp    # AI 백엔드
-sudo ufw --force enable > /dev/null 2>&1
-
-log_success "방화벽 설정 완료"
+# UFW 설치 여부 확인
+if command -v ufw >/dev/null 2>&1; then
+    log_info "UFW 방화벽 사용"
+    sudo ufw allow 22/tcp      # SSH
+    sudo ufw allow 25565/tcp   # Minecraft 기본 포트
+    sudo ufw allow 5000/tcp    # AI 백엔드
+    sudo ufw --force enable > /dev/null 2>&1
+    log_success "UFW 방화벽 설정 완료"
+else
+    log_warning "UFW가 설치되어 있지 않음. 설치 시도 중..."
+    if sudo apt install ufw -y -qq; then
+        log_success "UFW 설치 완료"
+        sudo ufw allow 22/tcp      # SSH
+        sudo ufw allow 25565/tcp   # Minecraft 기본 포트
+        sudo ufw allow 5000/tcp    # AI 백엔드
+        sudo ufw --force enable > /dev/null 2>&1
+        log_success "UFW 방화벽 설정 완료"
+    else
+        log_warning "UFW 설치 실패. iptables 사용"
+        # iptables로 대체
+        sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+        sudo iptables -A INPUT -p tcp --dport 25565 -j ACCEPT
+        sudo iptables -A INPUT -p tcp --dport 5000 -j ACCEPT
+        log_success "iptables 방화벽 설정 완료"
+    fi
+fi
 
 # 설치 완료 및 다음 단계 안내
 log_step "11. 설치 완료"

@@ -33,9 +33,13 @@
 
 ```bash
 cd ~
-# 실제 프로젝트를 다운로드하거나 파일을 전송하세요
-# 예시: scp -r minecraft-modpack-ai namepix080@YOUR-VM-IP:~/
+
+# Git으로 프로젝트 클론 (권장)
+git clone https://github.com/YOUR_USERNAME/minecraft-modpack-ai.git
 cd minecraft-modpack-ai
+
+# 또는 로컬에서 파일 전송
+# scp -r . namepix080@YOUR-VM-IP:~/minecraft-modpack-ai/
 ```
 
 ### **2단계: 자동 설치 실행**
@@ -222,12 +226,21 @@ CURRENT_MODPACK_VERSION=1.23.0
 
 ```bash
 cd ~/minecraft-modpack-ai/minecraft_plugin
-mvn clean package
 
-# 빌드 결과 확인
-ls -la target/ModpackAI-1.0.jar
+# Maven 캐시 정리 및 의존성 강제 업데이트
+mvn clean package -U -Dmaven.test.skip=true
 
-# Java 버전 확인
+# 빌드 결과 확인 (실제 생성되는 파일명들)
+ls -la target/*.jar
+
+# 주요 JAR 파일들:
+# - modpack-ai-plugin-1.0.0.jar (원본)
+# - modpack-ai-plugin-1.0.0-shaded.jar (의존성 포함)
+# 플러그인 설치 시 사용할 JAR 파일 확인
+PLUGIN_JAR=$(find target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
+echo "사용할 플러그인 JAR: $PLUGIN_JAR"
+
+# Java 버전 확인 (Java 17 필요)
 java -version
 ```
 
@@ -251,16 +264,39 @@ for modpack in "${NEOFORGE_MODPACKS[@]}"; do
   echo "🔧 $modpack 모드팩 설정 중..."
   cd "$HOME/$modpack"
   
-  # Arclight NeoForge 하이브리드 서버 다운로드
-  if [ ! -f "arclight-neoforge.jar" ]; then
-    echo "📥 Arclight NeoForge 하이브리드 서버 다운로드 중..."
-    wget -q -O arclight-neoforge.jar \
-      "https://github.com/IzzelAliz/Arclight/releases/download/1.21-1.0.5/arclight-neoforge-1.21-1.0.5.jar"
+  # NeoForge 하이브리드 서버 다운로드 (버전별 분리)
+  if [[ "$modpack" == "enigmatica_9e" ]]; then
+    # 1.20.1 NeoForge
+    if [ ! -f "youer-neoforge.jar" ]; then
+      echo "📥 Youer NeoForge 1.20.1 하이브리드 서버 다운로드 중..."
+      wget -q -O youer-neoforge.jar \
+        "https://api.mohistmc.com/api/v2/projects/youer/versions/1.20.1/builds/latest/download" || \
+      wget -q -O youer-neoforge.jar \
+        "https://github.com/IzzelAliz/Arclight/releases/download/1.20.1/arclight-neoforge-1.20.1.jar"
+    fi
+  else
+    # 1.21 NeoForge
+    if [ ! -f "youer-neoforge.jar" ]; then
+      echo "📥 Youer NeoForge 1.21 하이브리드 서버 다운로드 중..."
+      wget -q -O youer-neoforge.jar \
+        "https://api.mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download" || \
+      wget -q -O youer-neoforge.jar \
+        "https://github.com/IzzelAliz/Arclight/releases/download/1.21.1/arclight-neoforge-1.21.1.jar"
+    fi
   fi
   
   # 플러그인 디렉토리 생성 및 복사
   mkdir -p plugins/ModpackAI
-  cp ~/minecraft-modpack-ai/minecraft_plugin/target/ModpackAI-1.0.jar plugins/
+  
+  # 실제 빌드된 JAR 파일 찾아서 복사
+  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
+  if [ -f "$PLUGIN_JAR" ]; then
+    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
+    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
+  else
+    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
+    exit 1
+  fi
   
   # 플러그인 설정 파일 생성
   cat > plugins/ModpackAI/config.yml << EOF
@@ -341,7 +377,7 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server with Arclight NeoForge hybrid..."
 
-java $JVM_OPTS -jar arclight-neoforge.jar nogui
+java $JVM_OPTS -jar youer-neoforge.jar nogui
 EOFSCRIPT
 
   chmod +x start_with_ai.sh
@@ -366,12 +402,28 @@ for modpack in "${FORGE_1201_MODPACKS[@]}"; do
   if [ ! -f "mohist-1.20.1.jar" ]; then
     echo "📥 Mohist 1.20.1 하이브리드 서버 다운로드 중..."
     wget -q -O mohist-1.20.1.jar \
-      "https://mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"
+      "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"
+    
+    # 다운로드 실패 시 수동 설치 안내
+    if [ ! -s "mohist-1.20.1.jar" ]; then
+      echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
+      echo "1. https://mohistmc.com/downloads 에서 1.20.1 버전 다운로드"
+      echo "2. mohist-1.20.1.jar로 이름 변경하여 $PWD/ 에 복사"
+    fi
   fi
   
   # 플러그인 디렉토리 생성 및 복사
   mkdir -p plugins/ModpackAI
-  cp ~/minecraft-modpack-ai/minecraft_plugin/target/ModpackAI-1.0.jar plugins/
+  
+  # 실제 빌드된 JAR 파일 찾아서 복사
+  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
+  if [ -f "$PLUGIN_JAR" ]; then
+    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
+    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
+  else
+    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
+    exit 1
+  fi
   
   # 플러그인 설정 파일 생성 (NeoForge와 동일)
   cat > plugins/ModpackAI/config.yml << EOF
@@ -464,12 +516,28 @@ for modpack in "${FORGE_1165_MODPACKS[@]}"; do
   if [ ! -f "mohist-1.16.5.jar" ]; then
     echo "📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
     wget -q -O mohist-1.16.5.jar \
-      "https://mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"
+      "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"
+    
+    # 다운로드 실패 시 수동 설치 안내
+    if [ ! -s "mohist-1.16.5.jar" ]; then
+      echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
+      echo "1. https://mohistmc.com/downloads 에서 1.16.5 버전 다운로드"
+      echo "2. mohist-1.16.5.jar로 이름 변경하여 $PWD/ 에 복사"
+    fi
   fi
   
   # 플러그인 디렉토리 생성 및 복사
   mkdir -p plugins/ModpackAI
-  cp ~/minecraft-modpack-ai/minecraft_plugin/target/ModpackAI-1.0.jar plugins/
+  
+  # 실제 빌드된 JAR 파일 찾아서 복사
+  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
+  if [ -f "$PLUGIN_JAR" ]; then
+    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
+    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
+  else
+    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
+    exit 1
+  fi
   
   # 플러그인 설정 파일 생성
   cat > plugins/ModpackAI/config.yml << EOF
@@ -556,8 +624,23 @@ cd "$HOME/prominence_2"
 # CardBoard Fabric 하이브리드 서버 다운로드
 if [ ! -f "cardboard.jar" ]; then
   echo "📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
+  # 실제 작동하는 CardBoard 버전
   wget -q -O cardboard.jar \
-    "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"
+    "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"
+  
+  # 다운로드 실패 시 Banner 대안 시도
+  if [ ! -s "cardboard.jar" ]; then
+    echo "CardBoard 다운로드 실패, Banner (대안) 시도 중..."
+    wget -q -O cardboard.jar \
+      "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar"
+  fi
+  
+  if [ ! -s "cardboard.jar" ]; then
+    echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
+    echo "1. https://github.com/CardboardPowered/cardboard/releases 또는"
+    echo "2. https://github.com/Dueris/Banner/releases 에서 다운로드"
+    echo "3. cardboard.jar로 이름 변경하여 $PWD/ 에 복사"
+  fi
 fi
 
 # 플러그인 디렉토리 생성 및 복사
@@ -675,11 +758,17 @@ sudo chmod +x /usr/local/bin/mc-ai-monitor
 ### **8단계: 방화벽 설정**
 
 ```bash
+# UFW 설치 (Debian에서는 기본적으로 설치되어 있지 않을 수 있음)
+sudo apt install ufw -y
+
 # UFW 방화벽 규칙 설정
 sudo ufw allow 22/tcp      # SSH
 sudo ufw allow 25565/tcp   # Minecraft 기본 포트
 sudo ufw allow 5000/tcp    # AI 백엔드
 sudo ufw --force enable
+
+# 방화벽 상태 확인
+sudo ufw status
 ```
 
 ### **9단계: 설치 검증 및 테스트**
