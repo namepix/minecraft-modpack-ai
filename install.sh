@@ -202,7 +202,22 @@ log_step "6. Minecraft 플러그인 빌드"
 cd "$PROJECT_DIR/minecraft_plugin"
 
 log_info "Maven을 사용하여 플러그인 빌드 중..."
-mvn clean package -q -Dmaven.test.skip=true
+
+# Maven 캐시 문제 해결을 위한 정리
+if [ -d "$HOME/.m2/repository" ]; then
+    log_info "Maven 캐시 정리 중..."
+    rm -rf "$HOME/.m2/repository"
+fi
+
+# 의존성 강제 업데이트와 함께 빌드
+log_info "의존성 다운로드 및 컴파일 중..."
+mvn clean package -U -Dmaven.test.skip=true
+
+# 빌드 실패 시 상세 정보로 재시도
+if [ ! -f "target/ModpackAI-1.0.jar" ]; then
+    log_warning "초기 빌드 실패, 상세 로그로 재시도 중..."
+    mvn clean package -X -Dmaven.test.skip=true
+fi
 
 if [ -f "target/ModpackAI-1.0.jar" ]; then
     log_success "플러그인 빌드 완료: target/ModpackAI-1.0.jar"
