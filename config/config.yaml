@@ -1,30 +1,34 @@
-# 마인크래프트 모드팩 AI 시스템 설정
+# 🚀 마인크래프트 모드팩 AI 시스템 설정 (Gemini 2.5 Pro 웹검색 기반)
 
-# AI 모델 설정
+# AI 모델 설정 (간소화 버전)
 ai:
-  provider: "openai"  # openai, anthropic
-  model: "gpt-3.5-turbo"  # gpt-3.5-turbo, gpt-4, claude-3-sonnet
+  primary_provider: "google"  # Gemini 2.5 Pro (웹검색 지원)
+  primary_model: "gemini-2.5-pro"
+  backup_providers: ["openai", "anthropic"]  # 폴백용
   max_tokens: 1000
   temperature: 0.7
+  web_search_enabled: true  # Gemini 2.5 Pro 웹검색 기능
+  
   system_prompt_template: |
     당신은 마인크래프트 모드팩 전문가 AI 어시스턴트입니다.
+    웹검색 기능을 통해 최신 모드 정보와 업데이트를 실시간으로 확인할 수 있습니다.
     
     주요 역할:
     1. 모드팩 관련 질문에 정확하고 도움이 되는 답변 제공
     2. 아이템 제작법, 사용법, 획득 방법 등 상세 정보 제공
-    3. 모드팩 간의 상호작용과 최적화 방법 안내
+    3. 최신 모드 업데이트 및 변경사항 안내
     4. 플레이어의 진행 상황에 맞는 조언 제공
     
     답변 규칙:
     - 항상 한국어로 답변
+    - 웹검색을 통해 최신 정보 확인
     - 구체적이고 실용적인 정보 제공
     - 게임 내 아이템명은 정확히 표기
     - 복잡한 내용은 단계별로 설명
     - 친근하고 도움이 되는 톤 유지
     
     현재 모드팩: {modpack_name}
-    
-    이전 대화 기록을 참고하여 일관성 있는 답변을 제공하세요.
+    버전: {modpack_version}
 
 # 서버 설정
 server:
@@ -33,23 +37,10 @@ server:
   debug: false
   cors_origins: ["*"]
 
-# 데이터베이스 설정
-database:
-  chat_db: "chat_history.db"
-  recipe_db: "recipes.db"
-  backup_interval_hours: 24
-  cleanup_old_messages_days: 30
-
-# 모드팩 분석 설정
-modpack_analyzer:
-  supported_formats: [".zip", ".jar"]
-  max_file_size_mb: 1000
-  recipe_patterns:
-    - "data/*/recipes/**/*.json"
-    - "assets/*/recipes/**/*.json"
-  supported_recipe_types:
-    - "minecraft:crafting_shaped"
-    - "minecraft:crafting_shapeless"
+# 간소화된 데이터 관리 (메모리 기반)
+data:
+  chat_history_max: 50  # 메모리에 보관할 최대 대화 수
+  recipe_cache_ttl: 3600  # 레시피 캐시 유지 시간 (초)
 
 # 마인크래프트 플러그인 설정
 minecraft_plugin:
@@ -77,22 +68,21 @@ minecraft_plugin:
     chat_history_lines: 20
     input_line: 1
 
-# 비용 최적화 설정
+# 비용 최적화 설정 (Gemini 2.5 Pro 기반)
 cost_optimization:
-  # 무료 AI 모델 우선 사용
-  preferred_providers: ["anthropic", "openai"]
+  # Gemini 2.5 Pro 우선, 폴백 시스템
+  model_priority: ["gemini-2.5-pro", "gpt-3.5-turbo", "claude-3-sonnet"]
   
   # 요청 제한
   max_requests_per_hour: 100
   max_requests_per_day: 1000
   
-  # 캐싱 설정
+  # 응답 캐싱 (웹검색 결과 포함)
   cache_responses: true
-  cache_duration_hours: 24
+  cache_duration_hours: 12  # 웹검색 결과는 더 짧은 캐시
   
-  # 모드팩 분석 제한
-  max_modpack_size_mb: 500
-  max_recipe_analysis_per_modpack: 1000
+  # 웹검색 최적화
+  web_search_cache_hours: 6  # 웹검색 결과 캐시 시간
 
 # 로깅 설정
 logging:

@@ -1,1 +1,0 @@
-# Utils package for Minecraft Modpack AI Assistant 

@@ -1,0 +1,25 @@
+# 🚀 GCP VM 배포 설정 파일
+# 이 파일을 deploy.config로 복사한 후 실제 값으로 수정하세요
+
+# GCP VM 정보
+GCP_VM_IP="your-vm-external-ip"           # GCP VM의 외부 IP 주소
+GCP_VM_USER="your-username"               # VM의 사용자명 (보통 본인 계정명)
+GCP_VM_PROJECT_PATH="/home/user/mc_ai"    # VM에서 프로젝트가 저장될 경로
+
+# SSH 설정
+SSH_KEY_PATH="~/.ssh/id_rsa"              # SSH 개인키 파일 경로 (GCP VM 접속용)
+
+# 마인크래프트 서버 설정 (선택사항)
+MC_SERVER_PLUGINS_DIR="/opt/minecraft/plugins"  # 마인크래프트 서버의 plugins 디렉토리
+
+# 예시:
+# GCP_VM_IP="34.123.45.67"
+# GCP_VM_USER="john"
+# GCP_VM_PROJECT_PATH="/home/john/minecraft-ai"
+# SSH_KEY_PATH="~/.ssh/gcp_key"
+# MC_SERVER_PLUGINS_DIR="/opt/minecraft/plugins"
+
+# 사용 방법:
+# 1. 이 파일을 deploy.config로 복사
+# 2. 위의 값들을 실제 환경에 맞게 수정
+# 3. ./deploy.sh 실행

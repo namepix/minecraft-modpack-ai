@@ -2,423 +2,363 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import json
-import logging
+import requests
 from datetime import datetime
 from dotenv import load_dotenv
-import re
-from functools import wraps
-import time
-from collections import defaultdict
 
-from models.hybrid_ai_model import HybridAIModel
-from database.chat_manager import ChatManager
-from database.recipe_manager import RecipeManager
-from modpack_parser.modpack_analyzer import ModpackAnalyzer
-from utils.language_mapper import LanguageMapper
-from utils.rag_manager import RAGManager
-from utils.config import Config
+# 새로운 Gemini SDK
+from google import genai
+from google.genai import types
 
-# 환경 변수 로드
+# 보안 및 모니터링 미들웨어
+from middleware.security import SecurityMiddleware, require_valid_input, measure_performance
+from middleware.monitoring import MonitoringMiddleware, track_model_usage, track_user_activity
+
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# 미들웨어 초기화
+security_middleware = SecurityMiddleware(app)
+monitoring_middleware = MonitoringMiddleware(app)
 
-# 설정 로드
-config = Config()
+# API 키 설정
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 
-# Rate limiting을 위한 전역 변수
-request_counts = defaultdict(list)
-RATE_LIMIT = config.get('rate_limit_requests', 10)  # 1분당 요청 수
-RATE_WINDOW = config.get('rate_limit_window_seconds', 60)  # 60초
+# AI 모델 초기화 (안전하게)
+gemini_client = None
+openai_client = None
+claude_client = None
 
-def rate_limit(f):
-    """Rate limiting 데코레이터"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 클라이언트 IP 또는 UUID로 식별
-        client_id = request.headers.get('X-Client-ID') or request.remote_addr
-        
-        now = time.time()
-        # 오래된 요청 기록 제거
-        request_counts[client_id] = [req_time for req_time in request_counts[client_id] 
-                                   if now - req_time < RATE_WINDOW]
-        
-        # 요청 횟수 확인
-        if len(request_counts[client_id]) >= RATE_LIMIT:
-            return jsonify({'error': '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'}), 429
-        
-        # 현재 요청 기록
-        request_counts[client_id].append(now)
-        
-        return f(*args, **kwargs)
-    return decorated_function
-
-# 전역 객체들
-ai_model = None
-chat_manager = None
-recipe_manager = None
-modpack_analyzer = None
-language_mapper = None
-rag_manager = None
-
-def initialize_services():
-    """서비스들을 초기화합니다."""
-    global ai_model, chat_manager, recipe_manager, modpack_analyzer, language_mapper, rag_manager
-    
+# Google AI 초기화 - 2025년 최신 SDK 및 웹검색 지원
+if GOOGLE_API_KEY:
     try:
-        # 데이터베이스 매니저들 초기화
-        chat_manager = ChatManager()
-        recipe_manager = RecipeManager()
-        
-        # 언어 매퍼 초기화
-        language_mapper = LanguageMapper()
-        
-        # RAG 매니저 초기화 (필수)
-        gcp_project_id = config.get('gcp_project_id')
-        gcs_bucket_name = config.get('gcs_bucket_name')
-        
-        if not gcp_project_id or not gcs_bucket_name:
-            logger.error("❌ RAG 필수 설정 누락!")
-            logger.error("GCP_PROJECT_ID와 GCS_BUCKET_NAME이 필요합니다.")
-            logger.error("env.example을 참고하여 .env 파일을 설정하세요.")
-            raise ValueError("RAG 필수 설정이 누락되었습니다.")
-        
-        try:
-            rag_manager = RAGManager(gcp_project_id, gcs_bucket_name)
-            logger.info("✅ RAG 매니저 초기화 완료")
-        except Exception as e:
-            logger.error(f"❌ RAG 매니저 초기화 실패: {e}")
-            logger.error("GCP 프로젝트 ID와 버킷 이름을 확인하세요.")
-            raise
-        
-        # AI 모델 초기화 (recipe_manager, language_mapper, rag_manager 전달)
-        ai_model = HybridAIModel(recipe_manager=recipe_manager, language_mapper=language_mapper, rag_manager=rag_manager)
-        
-        # 모드팩 분석기 초기화
-        modpack_analyzer = ModpackAnalyzer()
-        
-        logger.info("✅ 모든 서비스가 성공적으로 초기화되었습니다.")
-        
+        gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
+        print("✅ Gemini 2.5 Pro 클라이언트 초기화 완료 (웹검색 지원, google-genai SDK)")
     except Exception as e:
-        logger.error(f"❌ 서비스 초기화 중 오류 발생: {e}")
+        print(f"⚠️ Gemini 클라이언트 초기화 실패: {e}")
+        gemini_client = None
+
+# OpenAI 초기화 - 2025년 업데이트된 방식, 안전한 처리
+if OPENAI_API_KEY and OPENAI_API_KEY != "dummy" and len(OPENAI_API_KEY) > 10:
+    try:
+        # 새로운 OpenAI 클라이언트 방식
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
         
-        # 필수 서비스 확인
-        if not chat_manager:
-            logger.error("❌ ChatManager 초기화 실패 - 시스템 시작 불가")
-        if not recipe_manager:
-            logger.error("❌ RecipeManager 초기화 실패 - 시스템 시작 불가")
-        if not language_mapper:
-            logger.error("❌ LanguageMapper 초기화 실패 - 시스템 시작 불가")
-        if not rag_manager:
-            logger.error("❌ RAGManager 초기화 실패 - 시스템 시작 불가")
-        if not ai_model:
-            logger.error("❌ AIModel 초기화 실패 - 시스템 시작 불가")
-        if not modpack_analyzer:
-            logger.error("❌ ModpackAnalyzer 초기화 실패 - 시스템 시작 불가")
+        # API 키 유효성 간단 테스트 (비용 최소화)
+        test_response = openai_client.models.list()
+        print("✅ OpenAI 클라이언트 초기화 완료 (무료 티어)")
+    except Exception as e:
+        print(f"⚠️ OpenAI API 키가 유효하지 않거나 초기화 실패: {e}")
+        openai_client = None
+elif OPENAI_API_KEY:
+    print("⚠️ OpenAI API 키가 더미 값이거나 너무 짧아서 비활성화됨")
+
+# Anthropic 초기화 - 안전한 처리 (무료 티어 없음)
+if ANTHROPIC_API_KEY and ANTHROPIC_API_KEY != "dummy" and len(ANTHROPIC_API_KEY) > 10:
+    try:
+        import anthropic
+        claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         
-        # 필수 서비스 중 하나라도 실패하면 시스템 중단
-        raise
+        # API 키 유효성 간단 테스트
+        claude_client.models.list()
+        print("✅ Claude 클라이언트 초기화 완료 (유료 API)")
+    except Exception as e:
+        print(f"⚠️ Claude API 키가 유효하지 않거나 초기화 실패: {e}")
+        claude_client = None
+elif ANTHROPIC_API_KEY:
+    print("⚠️ Anthropic API 키가 더미 값이거나 너무 짧아서 비활성화됨")
+
+# 현재 사용 중인 모델 (사용 가능한 첫 번째 모델 선택, Gemini 우선)
+current_model = "gemini" if gemini_client else "openai" if openai_client else "claude" if claude_client else None
 
 @app.route('/health', methods=['GET'])
-def health_check():
-    """서버 상태 확인"""
+def health():
     return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'services': {
-            'ai_model': ai_model is not None,
-            'chat_manager': chat_manager is not None,
-            'recipe_manager': recipe_manager is not None,
-            'modpack_analyzer': modpack_analyzer is not None,
-            'language_mapper': language_mapper is not None,
-            'rag_manager': rag_manager is not None
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "current_model": current_model,
+        "available_models": {
+            "gemini": gemini_client is not None,
+            "openai": openai_client is not None,
+            "claude": claude_client is not None
         }
     })
 
-@app.route('/api/chat', methods=['POST'])
-@rate_limit
+@app.route('/chat', methods=['POST'])
+@require_valid_input
+@track_user_activity
+@measure_performance("Chat API")
 def chat():
-    """AI와의 채팅 API"""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'JSON 데이터가 필요합니다.'}), 400
-        
-        user_uuid = data.get('user_uuid') or data.get('player_uuid')  # 하위 호환성
-        message = data.get('message')
-        modpack_name = data.get('modpack_name', 'unknown')
-        modpack_version = data.get('modpack_version', '1.0')
-        
-        # 입력 검증
-        if not user_uuid or not message:
-            return jsonify({'error': 'user_uuid와 message는 필수입니다.'}), 400
-        
-        # UUID 형식 검증
-        if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', user_uuid):
-            return jsonify({'error': '올바른 UUID 형식이 아닙니다.'}), 400
-        
-        # 메시지 길이 제한
-        if len(message) > 1000:
-            return jsonify({'error': '메시지는 1000자를 초과할 수 없습니다.'}), 400
-        
-        # 특수 문자 필터링 (XSS 방지)
-        message = re.sub(r'[<>"\']', '', message)
-        
-        # 이전 대화 기록 가져오기
-        chat_history = chat_manager.get_chat_history(user_uuid, limit=10)
-        
-        # AI 응답 생성
-        response = ai_model.generate_response(
-            message=message,
-            chat_history=chat_history,
-            modpack_name=modpack_name,
-            modpack_version=modpack_version,
-            user_uuid=user_uuid
-        )
-        
-        # 대화 기록 저장
-        chat_manager.save_message(user_uuid, message, response, modpack_name)
-        
-        return jsonify({
-            'response': response,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"채팅 API 오류: {e}")
-        return jsonify({'error': '서버 오류가 발생했습니다.'}), 500
+        data = request.json
+        message = data.get('message', '')
+        player_uuid = data.get('player_uuid', '')
+        modpack_name = data.get('modpack_name', 'Unknown Modpack')
+        modpack_version = data.get('modpack_version', '1.0.0')
 
-@app.route('/api/recipe/<item_name>', methods=['GET'])
-def get_recipe(item_name):
-    """아이템 제작법 조회 API"""
-    try:
-        modpack_name = request.args.get('modpack_name', 'unknown')
-        modpack_version = request.args.get('modpack_version', '1.0')
-        
-        recipe = recipe_manager.get_recipe_with_version_fallback(item_name, modpack_name, modpack_version)
-        
-        if recipe:
-            return jsonify(recipe)
+        # 마인크래프트 모드팩 컨텍스트
+        context = f"""
+당신은 마인크래프트 모드팩 전문가 AI 어시스턴트입니다.
+현재 모드팩: {modpack_name} v{modpack_version}
+
+사용자의 질문에 대해 친절하고 정확하게 답변해주세요.
+제작법, 아이템 정보, 모드 설명 등을 포함할 수 있습니다.
+"""
+
+        # 선택된 모델로 응답 생성
+        if current_model == "gemini" and gemini_client:
+            try:
+                # 웹검색 도구 설정
+                grounding_tool = types.Tool(google_search=types.GoogleSearch())
+                config = types.GenerateContentConfig(tools=[grounding_tool])
+                
+                full_message = context + "\n\n사용자: " + message + "\n\n최신 정보가 필요하다면 웹 검색을 활용해서 정확한 답변을 제공해주세요."
+                
+                # 웹검색 지원 모델로 응답 생성
+                with track_model_usage("gemini-2.5-pro-web"):
+                    response = gemini_client.models.generate_content(
+                        model="gemini-2.5-pro",
+                        contents=full_message,
+                        config=config
+                    )
+                    ai_response = response.text
+            except Exception as e:
+                print(f"Gemini 웹검색 모드 실패, 기본 모드로 폴백: {e}")
+                # 웹검색 실패시 기본 모드로 폴백
+                try:
+                    full_message = context + "\n\n사용자: " + message + "\n\nAI:"
+                    response = gemini_client.models.generate_content(
+                        model="gemini-2.5-pro",
+                        contents=full_message
+                    )
+                    ai_response = response.text
+                except Exception as e2:
+                    ai_response = f"Gemini API 오류가 발생했습니다: {str(e2)}"
+
+        elif current_model == "openai" and openai_client:
+            try:
+                # 2025년 최신 OpenAI API 방식
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",  # 무료 티어 최신 모델
+                    messages=[
+                        {"role": "system", "content": context},
+                        {"role": "user", "content": message}
+                    ],
+                    max_tokens=1000,
+                    temperature=0.7
+                )
+                ai_response = response.choices[0].message.content
+            except Exception as e:
+                print(f"OpenAI GPT-4o-mini 실패, GPT-3.5-turbo로 폴백: {e}")
+                # 폴백 시도
+                try:
+                    response = openai_client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": context},
+                            {"role": "user", "content": message}
+                        ],
+                        max_tokens=1000,
+                        temperature=0.7
+                    )
+                    ai_response = response.choices[0].message.content
+                except Exception as e2:
+                    ai_response = "OpenAI API 오류가 발생했습니다. 할당량이나 API 키를 확인해주세요."
+
+        elif current_model == "claude" and claude_client:
+            try:
+                response = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",  # 2025년 최신 Claude 모델
+                    max_tokens=1000,
+                    messages=[
+                        {"role": "user", "content": context + "\n\n" + message}
+                    ]
+                )
+                ai_response = response.content[0].text
+            except Exception as e:
+                if "credit" in str(e).lower() or "billing" in str(e).lower():
+                    ai_response = "Claude API는 유료 서비스입니다. 크레딧을 충전해주세요."
+                else:
+                    ai_response = "Claude API 오류가 발생했습니다. API 키를 확인해주세요."
+
         else:
-            return jsonify({'error': '제작법을 찾을 수 없습니다.'}), 404
-            
-    except Exception as e:
-        logger.error(f"제작법 조회 API 오류: {e}")
-        return jsonify({'error': str(e)}), 500
+            ai_response = "현재 사용 가능한 AI 모델이 없습니다. Gemini API 키를 설정해주세요."
 
-@app.route('/api/modpack/analyze', methods=['POST'])
-@rate_limit
-def analyze_modpack():
-    """모드팩 분석 API"""
-    try:
-        data = request.get_json()
-        modpack_path = data.get('modpack_path')
-        
-        if not modpack_path:
-            return jsonify({'error': 'modpack_path는 필수입니다.'}), 400
-        
-        # 모드팩 분석
-        analysis_result = modpack_analyzer.analyze_modpack(modpack_path)
-        
-        # 언어 매핑 자동 생성
-        if analysis_result.get('analysis_status') == 'completed':
-            mappings_added = language_mapper.analyze_modpack_for_mappings(analysis_result)
-            analysis_result['language_mappings_added'] = mappings_added
-        
-        return jsonify(analysis_result)
-        
-    except Exception as e:
-        logger.error(f"모드팩 분석 API 오류: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/chat/history/<player_uuid>', methods=['GET'])
-def get_chat_history(player_uuid):
-    """플레이어의 채팅 기록 조회"""
-    try:
-        limit = request.args.get('limit', 20, type=int)
-        history = chat_manager.get_chat_history(player_uuid, limit=limit)
-        
         return jsonify({
-            'player_uuid': player_uuid,
-            'history': history
+            "success": True,
+            "response": ai_response,
+            "model": current_model,
+            "timestamp": datetime.now().isoformat()
         })
-        
-    except Exception as e:
-        logger.error(f"채팅 기록 조회 오류: {e}")
-        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/language/mapping', methods=['POST'])
-@rate_limit
-def add_custom_mapping():
-    """사용자 정의 언어 매핑 추가"""
-    try:
-        data = request.get_json()
-        korean_name = data.get('korean_name')
-        english_name = data.get('english_name')
-        modpack_name = data.get('modpack_name', 'unknown')
-        user_uuid = data.get('user_uuid')
-        
-        if not all([korean_name, english_name, user_uuid]):
-            return jsonify({'error': 'korean_name, english_name, user_uuid는 필수입니다.'}), 400
-        
-        language_mapper.add_custom_mapping(korean_name, english_name, modpack_name, user_uuid)
-        
+    except Exception as e:
         return jsonify({
-            'message': '매핑이 성공적으로 추가되었습니다.',
-            'mapping': {
-                'korean_name': korean_name,
-                'english_name': english_name,
-                'modpack_name': modpack_name,
-                'user_uuid': user_uuid
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"언어 매핑 추가 오류: {e}")
-        return jsonify({'error': str(e)}), 500
+            "success": False,
+            "error": str(e)
+        }), 500
 
-@app.route('/api/language/translate/<korean_name>', methods=['GET'])
-@rate_limit
-def translate_item_name(korean_name):
-    """한글 아이템명을 영어로 변환"""
-    try:
-        modpack_name = request.args.get('modpack_name', 'unknown')
-        user_uuid = request.args.get('user_uuid')
-        
-        english_name, confidence, source = language_mapper.find_english_name(
-            korean_name, modpack_name, user_uuid
-        )
-        
-        return jsonify({
-            'korean_name': korean_name,
-            'english_name': english_name,
-            'confidence': confidence,
-            'source': source
-        })
-        
-    except Exception as e:
-        logger.error(f"언어 변환 오류: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/modpack/switch', methods=['POST'])
-@rate_limit
-def switch_modpack():
-    """모드팩 변경 및 자동 설정"""
-    try:
-        data = request.get_json()
-        modpack_path = data.get('modpack_path')
-        modpack_name = data.get('modpack_name')
-        modpack_version = data.get('modpack_version', '1.0')
-        
-        if not modpack_path or not modpack_name:
-            return jsonify({'error': 'modpack_path와 modpack_name은 필수입니다.'}), 400
-        
-        # 1. 모드팩 분석
-        logger.info(f"모드팩 분석 시작: {modpack_name} v{modpack_version}")
-        analysis_result = modpack_analyzer.analyze_modpack(modpack_path)
-        
-        if analysis_result.get('analysis_status') != 'completed':
-            return jsonify({'error': '모드팩 분석에 실패했습니다.'}), 500
-        
-        # 2. 언어 매핑 자동 생성
-        logger.info("언어 매핑 자동 생성 중...")
-        mappings_added = language_mapper.analyze_modpack_for_mappings(analysis_result)
-        
-        # 3. RAG 데이터 업데이트
-        if rag_manager and analysis_result.get('mods'):
-            logger.info("RAG 데이터 업데이트 중...")
-            rag_manager.update_modpack_knowledge(modpack_name, analysis_result)
-        
-        # 4. 환경 변수 업데이트 (선택적)
-        update_env = data.get('update_environment', False)
-        if update_env:
-            # 환경 변수 파일 업데이트 로직
-            pass
-        
-        return jsonify({
-            'message': f'모드팩 {modpack_name} v{modpack_version}로 성공적으로 변경되었습니다.',
-            'analysis_result': analysis_result,
-            'language_mappings_added': mappings_added,
-            'rag_updated': rag_manager is not None
-        })
-        
-    except Exception as e:
-        logger.error(f"모드팩 변경 오류: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/models', methods=['GET'])
+@app.route('/models', methods=['GET'])
 def get_models():
-    """사용 가능한 AI 모델 목록을 반환합니다."""
-    try:
-        if not ai_model:
-            return jsonify({'error': 'AI 모델이 초기화되지 않았습니다.'}), 500
-        
-        models_info = ai_model.get_available_models_info()
-        return jsonify({
-            'models': models_info,
-            'current_model': ai_model.current_model
+    models = []
+    
+    if gemini_client:
+        models.append({
+            "id": "gemini",
+            "name": "Gemini 2.5 Pro (웹검색 지원)",
+            "provider": "Google",
+            "available": True,
+            "current": current_model == "gemini"
         })
-    except Exception as e:
-        logger.error(f"모델 정보 조회 오류: {e}")
-        return jsonify({'error': '모델 정보를 가져올 수 없습니다.'}), 500
+    
+    if openai_client:
+        models.append({
+            "id": "openai",
+            "name": "GPT-4o Mini / GPT-3.5 Turbo",
+            "provider": "OpenAI",
+            "available": True,
+            "current": current_model == "openai"
+        })
+    
+    if claude_client:
+        models.append({
+            "id": "claude",
+            "name": "Claude 3.5 Sonnet",
+            "provider": "Anthropic",
+            "available": True,
+            "current": current_model == "claude"
+        })
+    
+    return jsonify({"models": models})
 
-@app.route('/api/models/switch', methods=['POST'])
-@rate_limit
+@app.route('/models/switch', methods=['POST'])
 def switch_model():
-    """AI 모델을 전환합니다."""
+    global current_model
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'JSON 데이터가 필요합니다.'}), 400
-        
-        model_id = data.get('model_id')
-        if not model_id:
-            return jsonify({'error': 'model_id가 필요합니다.'}), 400
-        
-        if not ai_model:
-            return jsonify({'error': 'AI 모델이 초기화되지 않았습니다.'}), 500
-        
-        success = ai_model.switch_model(model_id)
-        if success:
+        data = request.json
+        model_id = data.get('model_id', 'gemini')
+
+        # 사용 가능한 모델인지 확인
+        available_models = []
+        if gemini_client:
+            available_models.append('gemini')
+        if openai_client:
+            available_models.append('openai')
+        if claude_client:
+            available_models.append('claude')
+
+        if model_id in available_models:
+            current_model = model_id
             return jsonify({
-                'success': True,
-                'current_model': ai_model.current_model,
-                'message': f'모델이 {model_id}로 전환되었습니다.'
+                "success": True,
+                "message": f"모델이 {model_id}로 변경되었습니다."
             })
         else:
-            return jsonify({'error': f'모델 {model_id}로 전환할 수 없습니다.'}), 400
-            
-    except Exception as e:
-        logger.error(f"모델 전환 오류: {e}")
-        return jsonify({'error': '모델 전환 중 오류가 발생했습니다.'}), 500
+            return jsonify({
+                "success": False,
+                "error": "지원하지 않는 모델이거나 API 키가 유효하지 않습니다."
+            }), 400
 
-@app.route('/api/models/current', methods=['GET'])
-def get_current_model():
-    """현재 사용 중인 AI 모델 정보를 반환합니다."""
-    try:
-        if not ai_model:
-            return jsonify({'error': 'AI 모델이 초기화되지 않았습니다.'}), 500
-        
-        current_model_info = ai_model.available_models.get(ai_model.current_model, {})
-        return jsonify({
-            'current_model': ai_model.current_model,
-            'model_info': current_model_info
-        })
     except Exception as e:
-        logger.error(f"현재 모델 정보 조회 오류: {e}")
-        return jsonify({'error': '현재 모델 정보를 가져올 수 없습니다.'}), 500
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/recipe/<item_name>', methods=['GET'])
+def get_recipe(item_name):
+    try:
+        # 현재 활성 모델을 사용해서 레시피 검색
+        if current_model == "gemini" and gemini_client:
+            try:
+                # 웹검색 도구 설정으로 최신 레시피 정보 검색
+                grounding_tool = types.Tool(google_search=types.GoogleSearch())
+                config = types.GenerateContentConfig(tools=[grounding_tool])
+                
+                query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요. 최신 정보를 검색해서 정확한 답변을 제공해주세요."
+                
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=query,
+                    config=config
+                )
+                recipe_text = response.text
+            except Exception as e:
+                print(f"Gemini 웹검색 레시피 검색 실패, 기본 모드로 폴백: {e}")
+                # 폴백: 검색 없이 레시피 생성
+                try:
+                    query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
+                    response = gemini_client.models.generate_content(
+                        model="gemini-2.5-pro",
+                        contents=query
+                    )
+                    recipe_text = response.text
+                except:
+                    recipe_text = f"{item_name}의 제작법을 찾을 수 없습니다. 게임 내 제작법 책을 확인해보세요."
+        
+        elif current_model == "openai" and openai_client:
+            try:
+                query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": query}],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                recipe_text = response.choices[0].message.content
+            except:
+                recipe_text = f"{item_name}의 제작법을 찾을 수 없습니다. 게임 내 제작법 책을 확인해보세요."
+        
+        elif current_model == "claude" and claude_client:
+            try:
+                query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
+                response = claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": query}]
+                )
+                recipe_text = response.content[0].text
+            except:
+                recipe_text = f"{item_name}의 제작법을 찾을 수 없습니다. 게임 내 제작법 책을 확인해보세요."
+        else:
+            recipe_text = f"{item_name}의 제작법을 찾을 수 없습니다. 게임 내 제작법 책을 확인해보세요."
+
+        recipe_info = {
+            "item": item_name,
+            "recipe": recipe_text,
+            "materials": [],
+            "crafting_type": "unknown"
+        }
+
+        return jsonify({
+            "success": True,
+            "recipe": recipe_info
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == '__main__':
-    # 서비스 초기화
-    initialize_services()
+    print("🚀 마인크래프트 AI 백엔드 시작 중...")
+    print(f"📊 현재 활성 모델: {current_model if current_model else '없음'}")
+    print(f"🔑 Google API (Gemini): {'✅' if gemini_client else '❌'}")
+    print(f"🔑 OpenAI API: {'✅' if openai_client else '❌'}")  
+    print(f"🔑 Anthropic API (Claude): {'✅' if claude_client else '❌'}")
     
-    # 서버 실행
-    port = config.get('port', 5000)
-    debug = config.get('debug', False)
+    if current_model:
+        print(f"🎯 주 사용 모델: {current_model}")
+        if current_model == "gemini":
+            print("🌐 Gemini 웹검색 기능 활성화됨")
+    else:
+        print("⚠️ 경고: 사용 가능한 AI 모델이 없습니다!")
+        print("💡 최소한 Google API 키(Gemini)를 설정하는 것을 권장합니다.")
     
-    app.run(host='0.0.0.0', port=port, debug=debug) 
+    print("=" * 60)
+    app.run(host='0.0.0.0', port=5000, debug=False) 

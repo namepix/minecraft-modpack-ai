@@ -37,7 +37,7 @@ public class AIManager {
         
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/models"))
+                    .uri(URI.create(baseUrl + "/models"))
                     .header("Content-Type", "application/json")
                     .GET()
                     .build();
@@ -81,7 +81,7 @@ public class AIManager {
             requestBody.put("model_id", modelId);
             
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/models/switch"))
+                    .uri(URI.create(baseUrl + "/models/switch"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                     .build();
@@ -111,7 +111,7 @@ public class AIManager {
     public AIModelInfo getCurrentModel() {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/models/current"))
+                    .uri(URI.create(baseUrl + "/models"))
                     .header("Content-Type", "application/json")
                     .GET()
                     .build();
@@ -194,7 +194,7 @@ public class AIManager {
             requestBody.put("modpack_version", modpackVersion);
             
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/chat"))
+                    .uri(URI.create(baseUrl + "/chat"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                     .build();
@@ -203,7 +203,12 @@ public class AIManager {
             
             if (response.statusCode() == 200) {
                 JSONObject jsonResponse = new JSONObject(response.body());
-                return jsonResponse.getString("response");
+                if (jsonResponse.getBoolean("success")) {
+                    return jsonResponse.getString("response");
+                } else {
+                    logger.warning("AI 응답 생성 실패: " + jsonResponse.optString("error", "Unknown error"));
+                    return "죄송합니다. AI 서비스에 문제가 발생했습니다.";
+                }
             } else {
                 logger.warning("AI 응답 생성 실패: " + response.statusCode());
                 return "죄송합니다. AI 서비스에 문제가 발생했습니다.";

@@ -4,34 +4,37 @@
 
 ## ✨ 주요 기능
 
-- 🤖 **다중 AI 모델 지원**: Gemini Pro (메인, 웹검색), GPT, Claude (백업)
+- 🤖 **Gemini 2.5 Pro 중심**: 웹검색 지원으로 최신 모드 정보 실시간 제공
+- 🌐 **실시간 웹검색**: Google 검색을 통한 최신 모드 업데이트 및 정보 확인
 - 🎯 **모드팩 전문 지식**: 특정 모드팩에 대한 정확한 정보 제공
 - 🛠️ **3x3 제작법 GUI**: 시각적으로 명확한 제작법 표시
-- 💬 **채팅 기록**: 플레이어별 대화 기록 저장
+- 💬 **메모리 기반 채팅**: 플레이어별 대화 기록 (메모리 저장)
 - 🌐 **한글/영어 호환**: 아이템명과 질문 모두 한글/영어 사용 가능
-- 🔄 **모드팩 자동 변경**: 관리자가 쉽게 모드팩 전환 가능
-- 🔍 **RAG 시스템**: 벡터 검색을 통한 정확한 정보 제공
+- 🔄 **간편한 배포**: 자동화된 GCP VM 배포 및 업데이트 시스템
+- 🛡️ **보안 및 모니터링**: 내장된 보안 미들웨어와 성능 모니터링
 
-## 🏗️ 시스템 아키텍처
+## 🏗️ 시스템 아키텍처 (간소화 버전)
 
 ```
 ┌─────────────────┐    HTTP API    ┌─────────────────┐
 │   Minecraft     │ ◄────────────► │   AI Backend    │
 │   Plugin        │                │   (Flask)       │
 │                 │                │                 │
-│  - GUI System   │                │  - AI Models    │
-│  - Commands     │                │  - Database     │
-│  - Item Events  │                │  - RAG System   │
+│  - GUI System   │                │  - Gemini 2.5   │
+│  - Commands     │                │    Pro (메인)    │
+│  - Item Events  │                │  - 보안 미들웨어  │
+│  - Chat History │                │  - 모니터링      │
 └─────────────────┘                └─────────────────┘
          │                                   │
          │                                   │
          ▼                                   ▼
 ┌─────────────────┐                ┌─────────────────┐
-│   Minecraft     │                │   GCP Services  │
-│   Server        │                │                 │
-│                 │                │  - Cloud Storage│
-│  - Modpack      │                │  - Vector DB    │
-│  - Players      │                │  - Embeddings   │
+│   Minecraft     │                │  Google Search  │
+│   Server        │                │   (웹검색)        │
+│                 │                │                 │
+│  - Modpack      │                │  - 실시간 정보   │
+│  - Players      │                │  - 모드 업데이트 │
+│  - Plugin JAR   │                │  - 최신 데이터   │
 └─────────────────┘                └─────────────────┘
 ```
 
@@ -67,6 +70,15 @@ sudo systemctl enable mc-ai-backend
 /modpackai models               # AI 모델 선택
 ```
 
+### 5. API 엔드포인트
+```
+GET  /health                    # 서버 상태 확인
+POST /chat                      # AI 채팅
+GET  /models                    # 사용 가능한 AI 모델 목록
+POST /models/switch             # AI 모델 전환
+GET  /recipe/<item_name>        # 아이템 제작법 조회
+```
+
 **💡 팁**: AI 아이템을 우클릭하면 바로 채팅창이 열립니다!
 
 ## 📚 상세 가이드
@@ -97,7 +109,7 @@ sudo systemctl enable mc-ai-backend
 | GPT-4 | OpenAI | 정확도 높음 | 유료 |
 | Claude 3 Haiku | Anthropic | 빠르고 효율적 | 유료 |
 | Claude 3 Sonnet | Anthropic | 균형잡힌 성능 | 유료 |
-| Gemini Pro | Google | 무료 크레딧 제공 | 무료 |
+| Gemini 2.5 Pro | Google | 웹검색 지원, 무료 크레딧 제공 | 무료 |
 
 ## 🔧 관리자 도구
 

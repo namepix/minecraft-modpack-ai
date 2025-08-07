@@ -31,7 +31,7 @@ public class RecipeManager {
     public String getRecipe(String itemName) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/recipe/" + encodeUrl(itemName)))
+                    .uri(URI.create(baseUrl + "/recipe/" + encodeUrl(itemName)))
                     .header("Content-Type", "application/json")
                     .GET()
                     .build();
@@ -39,7 +39,13 @@ public class RecipeManager {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             
             if (response.statusCode() == 200) {
-                return response.body();
+                JSONObject jsonResponse = new JSONObject(response.body());
+                if (jsonResponse.getBoolean("success")) {
+                    return response.body();
+                } else {
+                    logger.warning("제작법 조회 실패: " + jsonResponse.optString("error", "Unknown error") + " - " + itemName);
+                    return createErrorResponse("제작법을 찾을 수 없습니다: " + itemName);
+                }
             } else {
                 logger.warning("제작법 조회 실패: " + response.statusCode() + " - " + itemName);
                 return createErrorResponse("제작법을 찾을 수 없습니다: " + itemName);
