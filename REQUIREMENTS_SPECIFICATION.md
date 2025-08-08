@@ -1,4 +1,4 @@
-# Minecraft Modpack AI 시스템 요구사항 명세서
+# Minecraft Modpack AI 시스템 요구사항 명세서 (NeoForge 모드 버전)
 
 ## 📋 프로젝트 개요
 
@@ -8,6 +8,7 @@
 - **통합 관리 시스템**: 모드팩 전환, 설정 관리, 모니터링을 위한 통합 솔루션
 - **플레이어 동기부여 시스템**: AI 아이템을 통한 모드팩 적응 및 흥미 유발
 - **GCP VM 환경 최적화**: Google Cloud Platform Debian 환경에서의 안정적인 운영
+- **NeoForge 네이티브 지원**: 하이브리드 서버 없이 순수 NeoForge 서버에서 작동
 
 ### 핵심 가치
 - **자동화**: 수동 작업 최소화
@@ -16,7 +17,7 @@
 - **사용자 친화성**: 직관적인 인터페이스
 - **게임성**: 플레이어의 모드팩 적응을 돕는 재미있는 요소
 - **API 호환성**: 최신 라이브러리와의 안정적인 호환성 보장
-- **하이브리드 서버 지원**: 모드와 플러그인 동시 지원
+- **NeoForge 네이티브**: 순수 NeoForge 모드로 구현되어 안정성 극대화
 - **서버스타터 호환성**: 기존 모드팩 서버스타터와의 완벽 통합
 
 ---
@@ -27,27 +28,27 @@
 ```
 VM (Ubuntu 22.04 LTS / Debian)
 ├── minecraft-modpack-ai/          # 메인 프로젝트
-│   ├── minecraft_plugin/          # Java 플러그인 (Bukkit/Spigot) → NeoForge 모드로 변경 가능
-│   ├── minecraft_mod/             # NeoForge 모드 (신규)
+│   ├── minecraft_mod/             # NeoForge 모드 (메인)
+│   ├── minecraft_plugin/          # Bukkit 플러그인 (레거시)
 │   ├── backend/                   # Python 백엔드 (Flask)
 │   ├── config/                    # 설정 파일
 │   ├── guides/                    # 사용자 가이드
 │   └── scripts/                   # 관리 스크립트
 ├── [모드팩1]/                     # atm10, enigmatica_10 등
-│   ├── start_with_ai.sh          # AI 지원 시작 스크립트
-│   ├── plugins/                   # 플러그인 디렉토리
-│   └── mods/                      # 모드 디렉토리
+│   ├── mods/                      # 모드 디렉토리 (modpackai-*.jar)
+│   ├── config/                    # 설정 디렉토리 (modpackai-config.json)
+│   └── logs/                      # 로그 디렉토리
 ├── [모드팩2]/
 └── [모드팩N]/
 ```
 
 ### 컴포넌트별 역할
-1. **Java 플러그인/모드**: Minecraft 내 게임 인터페이스 (플러그인 또는 NeoForge 모드)
+1. **NeoForge 모드**: Minecraft 내 게임 인터페이스 (메인)
 2. **Python 백엔드**: AI 처리 및 모드팩 분석 (Flask 기반)
 3. **관리 스크립트**: 서버 관리 자동화
 4. **데이터베이스**: 채팅 기록 및 설정 저장 (SQLite)
 5. **RAG 시스템**: Google Cloud Storage + FAISS 기반 지식 검색
-6. **하이브리드 서버**: 모드와 플러그인 동시 지원
+6. **Bukkit 플러그인**: 레거시 지원 (하이브리드 서버 필요)
 
 ---
 
@@ -71,14 +72,14 @@ VM (Ubuntu 22.04 LTS / Debian)
   - 새 모드팩 서버 시작
   - 상태 확인 및 복구
 - **전환 기록**: 모드팩 전환 이력 관리
-- **하이브리드 서버 지원**: 모드와 플러그인 동시 지원하는 서버 환경
+- **NeoForge 네이티브**: 순수 NeoForge 서버에서 안정적 작동
 
-#### 1.3 시작 스크립트 표준화
-- **통일된 명명**: 모든 모드팩의 시작 스크립트를 `start_with_ai.sh`로 통일
-- **자동 변환**: 기존 다양한 스크립트명을 자동으로 `start_with_ai.sh`로 변경
+#### 1.3 모드 설치 자동화
+- **자동 설치**: `install_mod.sh` 스크립트로 모든 모드팩에 자동 설치
+- **Gradle 빌드**: NeoForge 모드 자동 빌드 및 배포
+- **설정 파일 생성**: 모드팩별 맞춤 설정 파일 자동 생성
 - **권한 설정**: 실행 권한 자동 부여
 - **서버스타터 호환성**: 기존 모드팩 서버스타터와의 완벽 통합
-- **하이브리드 서버 자동 감지**: 서버 타입에 따른 적절한 시작 방식 선택
 
 ### 2. AI 시스템
 
@@ -117,7 +118,7 @@ VM (Ubuntu 22.04 LTS / Debian)
 - **모드팩별 데이터**: 각 모드팩의 고유 아이템/레시피 지원
 
 #### 2.6 채팅 시스템
-- **GUI 인터페이스**: Minecraft 내 채팅 GUI
+- **Screen GUI 인터페이스**: Minecraft 내 Screen API 기반 채팅 GUI
 - **직접 명령어**: `/ai <질문>` 명령어로 즉시 질문
 - **대화 기록**: 채팅 히스토리 저장 및 관리
 - **멀티플레이어**: 여러 플레이어 동시 지원
@@ -148,7 +149,7 @@ VM (Ubuntu 22.04 LTS / Debian)
 - **상태 모니터링**: 서버 상태 실시간 감시
 - **백업 시스템**: 자동 백업 및 복구
 - **GCP Debian 호환**: Google Cloud Platform Debian 환경 최적화
-- **하이브리드 서버 관리**: 모드와 플러그인 동시 지원하는 서버 환경 관리
+- **NeoForge 서버 관리**: 순수 NeoForge 서버 환경 관리
 
 #### 4.2 설정 관리
 - **중앙 집중식**: 모든 모드팩 설정 통합 관리
@@ -158,12 +159,12 @@ VM (Ubuntu 22.04 LTS / Debian)
 
 ### 5. 사용자 인터페이스
 
-#### 5.1 Minecraft 플러그인/모드 GUI
+#### 5.1 Minecraft NeoForge 모드 GUI
 - **AI 채팅**: `/ai` 명령어로 AI와 대화
 - **모델 선택**: AI 모델 변경 GUI
 - **레시피 뷰어**: 3x3 크래프팅 테이블 시각화
 - **직관적 UX**: 아이템 우클릭으로 GUI 열기
-- **플러그인/모드 호환성**: Bukkit 플러그인 또는 NeoForge 모드로 구현 가능
+- **Screen API 기반**: 현대적이고 유연한 GUI 시스템
 
 #### 5.2 관리자 도구
 - **웹 대시보드**: 서버 상태 및 관리 인터페이스
@@ -200,11 +201,11 @@ VM (Ubuntu 22.04 LTS / Debian)
 - **로그 관리**: 상세한 오류 로그 및 디버깅 정보
 - **간소화된 구조**: 복잡한 모듈 의존성 제거로 안정성 향상
 
-#### 7.3 플러그인/모드 빌드 안정성
-- **Maven 의존성**: 필수 라이브러리 자동 설치
+#### 7.3 모드 빌드 안정성
+- **Gradle 의존성**: 필수 라이브러리 자동 설치
 - **컴파일 오류 해결**: Java 컴파일 오류 자동 수정
-- **API 호환성**: Bukkit API 또는 NeoForge API 버전 호환성 보장
-- **빌드 자동화**: 플러그인/모드 빌드 프로세스 자동화
+- **API 호환성**: NeoForge API 버전 호환성 보장
+- **빌드 자동화**: 모드 빌드 프로세스 자동화
 
 ### 8. GCP VM 업그레이드 시스템 (신규)
 
@@ -222,48 +223,43 @@ VM (Ubuntu 22.04 LTS / Debian)
 
 #### 8.3 호환성 보장
 - **기존 데이터 보존**: 채팅 기록, 설정 등 기존 데이터 보존
-- **API 호환성**: 기존 Minecraft 플러그인/모드와의 호환성 유지
+- **API 호환성**: 기존 Minecraft 모드와의 호환성 유지
 - **점진적 업그레이드**: 단계별 업그레이드로 안정성 보장
 
-### 9. 하이브리드 서버 지원 시스템 (신규)
+### 9. NeoForge 모드 시스템 (신규)
 
-#### 9.1 하이브리드 서버 설치
-- **자동 설치**: `setup_hybrid_servers.sh` 스크립트로 모든 모드팩에 하이브리드 서버 자동 설치
-- **서버 타입 감지**: NeoForge, Forge, Fabric 모드팩 자동 감지
-- **적절한 하이브리드 서버 선택**: 
-  - NeoForge: Arclight, Youer
-  - Forge: Mohist
-  - Fabric: CardBoard
-- **수동 설치 지원**: 자동 설치 실패 시 수동 설치 가이드 제공
+#### 9.1 모드 아키텍처
+- **@Mod 어노테이션**: NeoForge 모드 표준 구조
+- **Brigadier 명령어**: 현대적인 명령어 시스템
+- **Screen API**: 유연한 GUI 시스템
+- **@SubscribeEvent**: 이벤트 기반 프로그래밍
+- **JSON 설정**: 구조화된 설정 관리
 
-#### 9.2 하이브리드 서버 관리
-- **JAR 파일 자동 감지**: `youer-neoforge.jar`, `neoforge-hybrid.jar`, `arclight-neoforge-*.jar` 등
-- **시작 스크립트 자동 생성**: 각 모드팩별 `start_with_ai.sh` 스크립트 자동 생성
-- **플러그인 자동 설치**: AI 플러그인을 모든 모드팩에 자동 설치
-- **설정 파일 자동 생성**: 모드팩별 맞춤 설정 파일 자동 생성
+#### 9.2 모드 빌드 시스템
+- **Gradle 빌드**: 표준 NeoForge 모드 빌드 시스템
+- **자동 의존성 관리**: Maven Central에서 의존성 자동 해결
+- **JAR 패키징**: 실행 가능한 모드 JAR 자동 생성
+- **버전 관리**: Semantic Versioning 기반 버전 관리
 
-#### 9.3 서버스타터 호환성
-- **기존 서버스타터 유지**: 원래 모드팩의 서버스타터 방식 지원
-- **AI 기능 추가**: 서버스타터 방식에 AI 플러그인 기능 추가
-- **안정성 우선**: 하이브리드 서버보다 안정적인 서버스타터 방식 우선 지원
+#### 9.3 모드 배포 시스템
+- **자동 설치**: 모든 모드팩에 자동 모드 설치
+- **설정 파일 생성**: 모드팩별 맞춤 설정 자동 생성
+- **호환성 검증**: NeoForge 버전 호환성 자동 확인
+- **롤백 지원**: 문제 발생 시 이전 버전으로 복원
 
-### 10. 플러그인/모드 선택 시스템 (신규)
+### 10. 레거시 플러그인 지원 (신규)
 
-#### 10.1 구현 방식 선택
-- **플러그인 방식**: Bukkit/Spigot/Paper 플러그인 (하이브리드 서버 필요)
-- **모드 방식**: NeoForge 모드 (일반 NeoForge 서버에서 작동)
-- **자동 선택**: 서버 환경에 따른 최적 구현 방식 자동 선택
+#### 10.1 플러그인 호환성
+- **Bukkit 플러그인**: 하이브리드 서버에서 사용 가능
+- **API 매핑**: 플러그인과 모드 간 API 호환성
+- **설정 변환**: 플러그인 설정을 모드 설정으로 변환
+- **단계적 마이그레이션**: 플러그인에서 모드로 점진적 전환
 
-#### 10.2 플러그인에서 모드로 변환
-- **코드 변환**: 기존 Bukkit 플러그인 코드를 NeoForge 모드로 변환
-- **API 매핑**: Bukkit API를 NeoForge API로 매핑
-- **의존성 변경**: Maven 의존성을 NeoForge 기반으로 변경
-- **빌드 시스템**: NeoForge 모드 빌드 시스템 적용
-
-#### 10.3 호환성 보장
-- **기능 동일성**: 플러그인과 모드 간 동일한 기능 제공
-- **설정 호환성**: 기존 설정 파일 호환성 유지
-- **사용자 경험**: 플레이어에게 동일한 사용자 경험 제공
+#### 10.2 하이브리드 서버 지원
+- **Arclight**: NeoForge + Bukkit 하이브리드 서버
+- **Mohist**: Forge + Bukkit 하이브리드 서버
+- **CardBoard**: Fabric + Bukkit 하이브리드 서버
+- **자동 감지**: 서버 타입에 따른 적절한 설치 방식 선택
 
 ---
 
@@ -271,13 +267,13 @@ VM (Ubuntu 22.04 LTS / Debian)
 
 ### 1. 개발 환경
 - **OS**: Ubuntu 22.04 LTS / Debian (GCP VM)
-- **Java**: OpenJDK 17+ (Minecraft 플러그인/모드용)
+- **Java**: OpenJDK 17+ (NeoForge 모드용)
 - **Python**: 3.9+ (백엔드용)
-- **Minecraft**: 1.20.1+ (Spigot/Paper/NeoForge)
-- **하이브리드 서버**: Arclight, Youer, Mohist, CardBoard 지원
+- **Minecraft**: 1.21.1 (NeoForge)
+- **Gradle**: 8.0+ (모드 빌드용)
 
 ### 2. 의존성 관리
-- **Maven**: Java 플러그인/모드 빌드 (의존성 자동 해결)
+- **Gradle**: NeoForge 모드 빌드 (의존성 자동 해결)
 - **pip**: Python 패키지 관리 (requirements.txt)
 - **google-genai**: 최신 Google Generative AI SDK (0.3.0+)
 - **flask**: 웹 프레임워크 (간소화된 구조)
@@ -307,12 +303,12 @@ VM (Ubuntu 22.04 LTS / Debian)
 - **키 검증**: API 키 유효성 검증
 - **폴백 메커니즘**: 주요 API 실패 시 대체 서비스 사용
 
-### 7. 하이브리드 서버 기술 요구사항 (신규)
-- **NeoForge 1.21.1**: Arclight, Youer 하이브리드 서버 지원
-- **Forge 1.20.1**: Mohist 하이브리드 서버 지원
-- **Fabric 1.20.1**: CardBoard 하이브리드 서버 지원
-- **JAR 파일 검증**: 하이브리드 서버 JAR 파일 크기 및 무결성 검증
-- **자동 다운로드**: GitHub 릴리스에서 최신 하이브리드 서버 자동 다운로드
+### 7. NeoForge 모드 기술 요구사항 (신규)
+- **NeoForge 21.1.184**: 최신 NeoForge API 사용
+- **Minecraft 1.21.1**: 최신 Minecraft 버전 지원
+- **Gradle 8.0+**: 모던 빌드 시스템
+- **Java 17+**: 최신 Java 버전 지원
+- **JAR 파일 검증**: 모드 JAR 파일 크기 및 무결성 검증
 
 ---
 
@@ -338,20 +334,19 @@ VM (Ubuntu 22.04 LTS / Debian)
 - **문제점**: 의존성 문제로 백엔드 서비스 시작 실패
 - **해결 방안**: 가상환경 재생성 및 최신 라이브러리 사용
 
-### 6. 하이브리드 서버 설치 문제 (신규)
-- **문제점**: 하이브리드 서버 다운로드 실패 (404 에러, 더미 파일)
+### 6. 모드 빌드 문제 (신규)
+- **문제점**: Gradle 빌드 실패 또는 의존성 문제
 - **해결 방안**: 
-  - GitHub 릴리스에서 직접 다운로드
-  - 최신 릴리스 태그 자동 감지
-  - 수동 설치 가이드 제공
-  - 서버스타터 방식 우선 지원
+  - Gradle 자동 설치 및 버전 관리
+  - 의존성 충돌 자동 해결
+  - 빌드 캐시 정리 기능
 
-### 7. 플러그인 로드 문제 (신규)
-- **문제점**: NeoForge 서버에서 Bukkit 플러그인 로드 불가
+### 7. 모드 로드 문제 (신규)
+- **문제점**: NeoForge 서버에서 모드 로드 실패
 - **해결 방안**: 
-  - 하이브리드 서버 사용
-  - NeoForge 모드로 변환
-  - 서버스타터 방식 유지
+  - NeoForge 버전 호환성 자동 확인
+  - 모드 파일 무결성 검증
+  - 로그 분석 및 디버깅 도구
 
 ### 8. UUID 검증 문제 (신규)
 - **문제점**: API 테스트 시 UUID 형식 오류
@@ -366,7 +361,7 @@ VM (Ubuntu 22.04 LTS / Debian)
 2. 간소화된 AI 백엔드 구축 (Flask) - Gemini 2.5 Pro 우선
 3. 모드팩 감지 시스템 구현
 4. Gemini 2.5 Pro 웹검색 시스템 구축
-5. 하이브리드 서버 설치 시스템 구축
+5. NeoForge 모드 빌드 시스템 구축
 
 ### Phase 2: 핵심 기능 (높음)
 1. AI 채팅 시스템 (`/ai` 명령어) - Gemini 2.5 Pro 웹검색 적용
@@ -374,13 +369,13 @@ VM (Ubuntu 22.04 LTS / Debian)
 3. 레시피 검색 시스템
 4. 언어 매핑 시스템
 5. API 엔드포인트 간소화
-6. 서버스타터 방식 AI 지원
+6. NeoForge 모드 GUI 시스템
 
-### Phase 3: 서버 환경 최적화 (중간)
-1. 하이브리드 서버 자동 설치
-2. 플러그인/모드 선택 시스템
-3. NeoForge 모드 변환 시스템
-4. 서버스타터 호환성 강화
+### Phase 3: 모드 시스템 최적화 (중간)
+1. NeoForge 모드 자동 빌드 및 배포
+2. 모드 설정 시스템 고도화
+3. Screen API 기반 GUI 완성
+4. 이벤트 시스템 최적화
 
 ### Phase 4: AI 아이템 시스템 (중간)
 1. AI 아이템 기본 기능
@@ -415,8 +410,8 @@ VM (Ubuntu 22.04 LTS / Debian)
 - [ ] API 키 없는 서비스 자동 비활성화
 - [ ] Gemini 2.5 Pro 웹검색 기능 정상 작동
 - [ ] GCP VM 자동 업그레이드 성공률 95% 이상
-- [ ] 하이브리드 서버 설치 성공률 90% 이상
-- [ ] 서버스타터 방식 AI 지원 완료
+- [ ] NeoForge 모드 빌드 성공률 95% 이상
+- [ ] 모드 자동 설치 성공률 90% 이상
 
 ### 기술적 기준
 - [ ] 모든 Java 컴파일 오류 해결
@@ -429,8 +424,8 @@ VM (Ubuntu 22.04 LTS / Debian)
 - [ ] 백엔드 서비스 자동 복구
 - [ ] google-genai SDK 정상 작동
 - [ ] API 엔드포인트 간소화 완료
-- [ ] 하이브리드 서버 정상 작동
-- [ ] NeoForge 모드 변환 완료
+- [ ] NeoForge 모드 정상 작동
+- [ ] Gradle 빌드 시스템 완성
 
 ### 사용자 경험 기준
 - [ ] 직관적인 GUI 인터페이스
@@ -442,33 +437,33 @@ VM (Ubuntu 22.04 LTS / Debian)
 - [ ] Gemini 2.5 Pro 웹검색으로 최신 정보 제공
 - [ ] 간소화된 API로 빠른 응답
 - [ ] GCP VM 원클릭 업그레이드 지원
-- [ ] 하이브리드 서버 원클릭 설치
-- [ ] 서버스타터 방식 AI 지원
+- [ ] NeoForge 모드 원클릭 설치
+- [ ] Screen API 기반 현대적 GUI
 
 ---
 
 ## 📚 참고 자료
 
 ### 문서
-- `guides/01_ADMIN_SETUP.md`: 관리자 설정 가이드
-- `guides/02_SYSTEM_OVERVIEW.md`: 시스템 개요
+- `guides/01_ADMIN_SETUP.md`: 관리자 설정 가이드 (모드 버전)
+- `guides/02_SYSTEM_OVERVIEW.md`: 시스템 개요 (모드 기반)
 - `guides/03_GAME_COMMANDS.md`: 게임 내 명령어 가이드
 - `guides/04_MODPACK_SWITCH.md`: 모드팩 전환 가이드
 - `guides/05_DEVELOPMENT.md`: 개발자 가이드
-- `manual_hybrid_install.md`: 하이브리드 서버 수동 설치 가이드
-- `README.md`: 프로젝트 개요
+- `README.md`: 프로젝트 개요 (모드 버전)
 
 ### 코드 구조
-- `minecraft_plugin/`: Java 플러그인 소스
-- `minecraft_mod/`: NeoForge 모드 소스 (신규)
+- `minecraft_mod/`: NeoForge 모드 소스 (메인)
+- `minecraft_plugin/`: Bukkit 플러그인 소스 (레거시)
 - `backend/`: Python 백엔드 (Flask)
 - `config/`: 설정 파일
 - `scripts/`: 관리 스크립트
 
 ### 설정 파일
-- `pom.xml`: Maven 의존성
+- `build.gradle`: Gradle 의존성 (모드 빌드용)
+- `pom.xml`: Maven 의존성 (플러그인 빌드용)
 - `requirements.txt`: Python 패키지
-- `config.yml`: 플러그인 설정
+- `modpackai-config.json`: 모드 설정
 - `pytest.ini`: 테스트 설정
 
 ---
@@ -484,10 +479,11 @@ VM (Ubuntu 22.04 LTS / Debian)
 | 2025-08-06 | 1.4 | API 호환성 및 의존성 관리 요구사항 추가 | System |
 | 2025-01-XX | 2.0 | Gemini 2.5 Pro 웹검색, 백엔드 간소화, GCP VM 업그레이드 시스템 추가 | System |
 | 2025-08-08 | 2.1 | 하이브리드 서버 지원, 서버스타터 호환성, NeoForge 모드 변환 시스템 추가 | System |
+| 2025-08-08 | 3.0 | NeoForge 모드 중심으로 완전 전환, 플러그인을 레거시로 변경 | System |
 
 ---
 
-**문서 버전**: 2.1  
+**문서 버전**: 3.0  
 **최종 업데이트**: 2025년 8월 8일  
 **담당자**: AI Assistant  
 **상태**: 검토 완료 

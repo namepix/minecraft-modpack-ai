@@ -42,7 +42,7 @@
 
 ### 1. 설치 (NeoForge 모드 방식)
 ```bash
-git clone https://github.com/your-username/minecraft-modpack-ai.git
+git clone https://github.com/namepix/minecraft-modpack-ai.git
 cd minecraft-modpack-ai
 chmod +x install_mod.sh
 ./install_mod.sh
@@ -107,7 +107,7 @@ GET  /recipe/<item_name>        # 아이템 제작법 조회
 ### 🔌 Bukkit 플러그인 버전 (legacy)
 - ⚠️ **하이브리드 서버 필요** (Arclight, Mohist, CardBoard)
 - ⚠️ **설치가 복잡함**
-- 📦 [플러그인 버전 다운로드](https://github.com/your-username/minecraft-modpack-ai/tree/plugin-version)
+- 📦 [플러그인 버전 다운로드](https://github.com/namepix/minecraft-modpack-ai/tree/plugin-version)
 
 ## 🛠️ 개발 환경
 
@@ -149,10 +149,10 @@ python -m pytest
 
 ## 🔗 링크
 
-- [GitHub 저장소](https://github.com/your-username/minecraft-modpack-ai)
-- [플러그인 버전](https://github.com/your-username/minecraft-modpack-ai/tree/plugin-version)
-- [이슈 리포트](https://github.com/your-username/minecraft-modpack-ai/issues)
-- [릴리스](https://github.com/your-username/minecraft-modpack-ai/releases)
+- [GitHub 저장소](https://github.com/namepix/minecraft-modpack-ai)
+- [플러그인 버전](https://github.com/namepix/minecraft-modpack-ai/tree/plugin-version)
+- [이슈 리포트](https://github.com/namepix/minecraft-modpack-ai/issues)
+- [릴리스](https://github.com/namepix/minecraft-modpack-ai/releases)
 
 ---
 

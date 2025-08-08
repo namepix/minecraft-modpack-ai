@@ -221,6 +221,7 @@ public class ModpackAICommands {
         
         player.sendSystemMessage(Component.literal("§6=== ModpackAI 시스템 상태 ==="));
         player.sendSystemMessage(Component.literal("§f모드 버전: 1.0.0"));
+        player.sendSystemMessage(Component.literal("§f모드팩: " + getModpackName() + " v" + ModpackAIMod.getInstance().getConfig().getModpackVersion()));
         player.sendSystemMessage(Component.literal("§f백엔드 URL: " + ModpackAIMod.getInstance().getConfig().getBackendUrl()));
         
         // 백엔드 상태 확인
@@ -238,7 +239,6 @@ public class ModpackAICommands {
      * 현재 모드팩 이름 가져오기 (임시 구현)
      */
     private static String getModpackName() {
-        // TODO: 실제 모드팩 감지 로직 구현
-        return "Unknown Modpack";
+        return ModpackAIMod.getInstance().getConfig().getModpackName();
     }
 }

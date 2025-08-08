@@ -20,7 +20,7 @@
 - ✅ **NeoForge 모드팩 서버**가 이미 설치되어 있음 (하이브리드 서버 불필요!)
 - ✅ API 키 준비 (Google Gemini 권장, OpenAI/Anthropic 선택)
 - ✅ Java 17+ 설치 확인
-- ✅ Gradle 설치 (모드 빌드용)
+- ✅ Python 3.9+ 설치 확인
 
 ### **1단계: 프로젝트 다운로드**
 **터미널에서 다음 명령어를 입력하세요:**
@@ -37,9 +37,14 @@ cd minecraft-modpack-ai
 - `cd minecraft-modpack-ai` : 다운로드된 프로젝트 폴더로 이동
 
 ### **2단계: 완전 자동 설치 실행**
-**터미널에서 다음 명령어를 입력하세요:**
+**터미널에서 다음 중 하나를 실행하세요(동일 동작):**
 
 ```bash
+# 방법 A: 간단 래퍼 스크립트 사용
+chmod +x install.sh
+./install.sh
+
+# 방법 B: 직접 설치 스크립트 실행
 chmod +x install_mod.sh
 ./install_mod.sh
 ```
@@ -50,14 +55,14 @@ chmod +x install_mod.sh
 
 **이 스크립트가 자동으로 수행하는 작업:**
 - ✅ AI 백엔드 설치 및 설정
-- ✅ **NeoForge 모드 빌드** (Gradle 사용)
+- ✅ **NeoForge 모드 빌드** (Gradle 자동 설치 및 사용)
 - ✅ 모든 NeoForge 모드팩에 **ModpackAI 모드** 설치
-- ✅ API 키 설정 확인
-- ✅ 백엔드 서비스 시작
-- ✅ 모든 모드팩 AI 분석
+- ✅ API 키 설정 파일 생성
+- ✅ 백엔드 서비스 자동 등록 및 시작
+- ✅ 설치 검증 및 상태 확인
 
 ### **3단계: API 키 설정 (필수)**
-스크립트 실행 중 API 키 설정 안내가 나타납니다. 
+스크립트 실행 후 API 키 설정이 필요합니다.
 
 **3.1 환경 변수 파일 열기**
 **터미널에서 다음 명령어를 입력하세요:**
@@ -96,6 +101,18 @@ DEBUG=false
 2. `Y` (저장 확인)
 3. `Enter` (파일명 확인)
 
+**3.5 백엔드 서비스 재시작**
+```bash
+sudo systemctl restart mc-ai-backend
+```
+
+**3.6 비용 제어(선택)**
+```bash
+# 웹검색 비용 제어: false로 설정하면 웹검색 비활성화(기본 true)
+echo "GEMINI_WEBSEARCH_ENABLED=false" >> $HOME/minecraft-ai-backend/.env
+sudo systemctl restart mc-ai-backend
+```
+
 ### **4단계: 설치 완료 확인**
 **터미널에서 다음 명령어로 상태를 확인하세요:**
 
@@ -103,8 +120,8 @@ DEBUG=false
 # 백엔드 서비스 상태 확인
 sudo systemctl status mc-ai-backend
 
-# 모드 설치 확인
-ls ~/*/mods/modpackai-*.jar
+# 모드 설치 확인 (정확한 파일명으로 수정)
+find ~ -name "modpackai-*.jar" -path "*/mods/*"
 
 # API 테스트
 curl http://localhost:5000/health
@@ -112,7 +129,7 @@ curl http://localhost:5000/health
 
 **성공적인 설치 확인 방법:**
 - ✅ `mc-ai-backend` 서비스가 `active (running)` 상태
-- ✅ 각 모드팩의 `mods/` 폴더에 `modpackai-1.0.0.jar` 파일 존재
+- ✅ 각 모드팩의 `mods/` 폴더에 `modpackai-*.jar` 파일 존재
 - ✅ API 테스트에서 `{"status": "healthy"}` 응답
 
 ---
@@ -130,7 +147,18 @@ pip install -r requirements.txt
 ### **2단계: NeoForge 모드 빌드**
 ```bash
 cd ~/minecraft-modpack-ai/minecraft_mod
-./gradlew build
+
+# Gradle 래퍼가 있으면 우선 사용, 없으면 시스템 gradle 사용
+if [ -x "./gradlew" ]; then
+  ./gradlew clean build
+else
+  # 시스템에 gradle이 없다면 설치 후 실행
+  if ! command -v gradle &> /dev/null; then
+    sudo apt-get update
+    sudo apt-get install -y gradle
+  fi
+  gradle clean build
+fi
 ```
 
 ### **3단계: 모드 설치**
@@ -138,19 +166,40 @@ cd ~/minecraft-modpack-ai/minecraft_mod
 # 빌드된 모드를 각 모드팩에 복사
 for modpack in ~/*/; do
     if [ -d "$modpack/mods" ]; then
-        cp build/libs/modpackai-1.0.0.jar "$modpack/mods/"
-        echo "ModpackAI 모드 설치 완료: $modpack"
+        # 정확한 파일명 확인 후 복사
+        MOD_FILE=$(find build/libs -name "modpackai-*.jar" | head -1)
+        if [ -n "$MOD_FILE" ]; then
+            cp "$MOD_FILE" "$modpack/mods/"
+            echo "ModpackAI 모드 설치 완료: $modpack"
+        fi
     fi
 done
 ```
 
 ### **4단계: 백엔드 서비스 설정**
 ```bash
-# 서비스 등록
-sudo cp ~/minecraft-modpack-ai/mc-ai-backend.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable mc-ai-backend
-sudo systemctl start mc-ai-backend
+# install_mod.sh 스크립트의 서비스 설정 부분 실행
+cd ~/minecraft-modpack-ai
+./install_mod.sh --service-only
+```
+
+### **5단계: RAG 준비(선택, 권장)**
+```bash
+# 모드팩 디렉토리를 분석하여 RAG 인덱스 자동 구축(분석+구축 한 번에)
+curl -s -X POST http://localhost:5000/api/modpack/switch \
+  -H 'Content-Type: application/json' \
+  -d '{"modpack_path":"~/enigmatica_10","modpack_name":"Enigmatica 10","modpack_version":"1.0.0"}' | jq .
+
+# 상태 확인
+curl -s http://localhost:5000/rag/status | jq .
+
+# 필요 시 수동 구축도 가능
+curl -s -X POST http://localhost:5000/rag/build \
+  -H 'Content-Type: application/json' \
+  -d '{"docs":[{"text":"다이아몬드 블록=다이아 주괴x9","source":"wiki"}]}' | jq .
+
+# 인덱스 영속화
+curl -s -X POST http://localhost:5000/rag/save | jq .
 ```
 
 ---
@@ -202,6 +251,9 @@ tail -f ~/modpack-name/logs/latest.log | grep modpackai
 
 # Java 버전 확인 (Java 17+ 필요)
 java -version
+
+# 모드 파일 확인
+find ~ -name "modpackai-*.jar" -path "*/mods/*"
 ```
 
 ### **백엔드 연결 실패**
@@ -214,6 +266,9 @@ netstat -tlnp | grep :5000
 
 # API 키 확인
 grep API_KEY $HOME/minecraft-ai-backend/.env
+
+# 서비스 재시작
+sudo systemctl restart mc-ai-backend
 ```
 
 ### **API 응답 오류**
@@ -225,6 +280,19 @@ sudo journalctl -u mc-ai-backend -f
 cd $HOME/minecraft-ai-backend
 source venv/bin/activate
 python app.py
+```
+
+### **모드 빌드 실패**
+```bash
+# Gradle 버전 확인
+gradle --version
+
+# 빌드 캐시 정리
+cd ~/minecraft-modpack-ai/minecraft_mod
+./gradlew clean build
+
+# Java 버전 확인
+java -version
 ```
 
 ---
@@ -251,6 +319,8 @@ python app.py
 }
 ```
 
+참고: `modpackai-config.json` 파일이 없다면 이 단계는 생략해도 됩니다. 모드는 기본 설정으로 정상 동작합니다.
+
 ### **성능 최적화**
 ```bash
 # Java 메모리 설정
@@ -259,6 +329,43 @@ export JAVA_OPTS="-Xms2G -Xmx4G"
 # 백엔드 워커 수 증가
 export WORKERS=4
 ```
+
+### **모드팩별 설정**
+```bash
+# 특정 모드팩에만 모드 설치
+cp ~/minecraft-modpack-ai/minecraft_mod/build/libs/modpackai-*.jar ~/enigmatica_10/mods/
+
+# 설정 파일 복사
+mkdir -p ~/enigmatica_10/config
+# 리소스에 파일이 있는 경우에만 복사 (없으면 생략 가능)
+if [ -f ~/minecraft-modpack-ai/minecraft_mod/src/main/resources/modpackai-config.json ]; then
+  cp ~/minecraft-modpack-ai/minecraft_mod/src/main/resources/modpackai-config.json ~/enigmatica_10/config/
+fi
+```
+
+---
+
+## 📋 설치 체크리스트
+
+### **사전 준비**
+- [ ] GCP VM Debian 서버 접속
+- [ ] Java 17+ 설치 확인
+- [ ] Python 3.9+ 설치 확인
+- [ ] NeoForge 모드팩 서버 설치
+- [ ] API 키 준비 (Google Gemini 권장)
+
+### **설치 과정**
+- [ ] 프로젝트 다운로드 (`git clone`)
+- [ ] 자동 설치 스크립트 실행 (`./install_mod.sh`)
+- [ ] API 키 설정 (`.env` 파일)
+- [ ] 백엔드 서비스 재시작
+- [ ] 설치 검증
+
+### **설치 확인**
+- [ ] 백엔드 서비스 실행 중 (`systemctl status`)
+- [ ] 모드 파일 존재 (`find ~ -name "modpackai-*.jar"`)
+- [ ] API 응답 정상 (`curl /health`)
+- [ ] 게임 내 명령어 작동 (`/ai help`)
 
 ---
 

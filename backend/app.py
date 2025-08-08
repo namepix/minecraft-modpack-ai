@@ -5,6 +5,7 @@ import json
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+from typing import List, Dict, Any
 
 # 새로운 Gemini SDK
 from google import genai
@@ -13,6 +14,7 @@ from google.genai import types
 # 보안 및 모니터링 미들웨어
 from middleware.security import SecurityMiddleware, require_valid_input, measure_performance
 from middleware.monitoring import MonitoringMiddleware, track_model_usage, track_user_activity
+from modpack_parser import scan_modpack
 
 load_dotenv()
 
@@ -27,6 +29,11 @@ monitoring_middleware = MonitoringMiddleware(app)
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+GEMINI_WEBSEARCH_ENABLED = os.getenv('GEMINI_WEBSEARCH_ENABLED', 'true').lower() == 'true'
+# RAG 프롬프트 첨부 예산(환경변수로 조정 가능)
+RAG_TOP_K = int(os.getenv('RAG_TOP_K', '5'))
+RAG_SNIPPET_MAX_CHARS = int(os.getenv('RAG_SNIPPET_MAX_CHARS', '500'))
+RAG_TOTAL_MAX_CHARS = int(os.getenv('RAG_TOTAL_MAX_CHARS', '1500'))
 
 # AI 모델 초기화 (안전하게)
 gemini_client = None
@@ -76,6 +83,107 @@ elif ANTHROPIC_API_KEY:
 # 현재 사용 중인 모델 (사용 가능한 첫 번째 모델 선택, Gemini 우선)
 current_model = "gemini" if gemini_client else "openai" if openai_client else "claude" if claude_client else None
 
+# ========= 간단 RAG 컴포넌트 (FAISS + SentenceTransformer) =========
+rag_enabled = False
+rag_index = None
+rag_documents: List[Dict[str, Any]] = []
+rag_model = None
+
+RAG_DIR = os.path.join(os.path.expanduser('~'), 'minecraft-ai-backend', 'rag')
+
+def init_rag():
+    global rag_enabled, rag_index, rag_model
+    try:
+        from sentence_transformers import SentenceTransformer
+        import faiss
+        rag_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+        # 빈 인덱스 초기화 (384차원)
+        rag_index = faiss.IndexFlatIP(384)
+        rag_enabled = True
+        print("✅ RAG 초기화 완료 (FAISS + SentenceTransformer)")
+        # 디스크에 저장된 인덱스/문서 자동 로드 시도
+        try:
+            rag_load_from_disk()
+        except Exception as e:
+            print(f"RAG 자동 로드 건너뜀: {e}")
+    except Exception as e:
+        rag_enabled = False
+        print(f"⚠️ RAG 초기화 비활성화: {e}")
+
+def build_rag(docs: List[Dict[str, Any]]):
+    """문서 리스트를 받아 임베딩 → 인덱스 구축"""
+    global rag_index, rag_documents
+    if not rag_enabled or rag_model is None:
+        return False
+    try:
+        import numpy as np
+        texts = [d.get('text', '') for d in docs]
+        emb = rag_model.encode(texts, normalize_embeddings=True)
+        # 새 인덱스 생성 후 교체
+        import faiss
+        index = faiss.IndexFlatIP(emb.shape[1])
+        index.add(emb.astype('float32'))
+        rag_index = index
+        rag_documents = docs
+        return True
+    except Exception as e:
+        print(f"RAG 인덱스 구축 실패: {e}")
+        return False
+
+def rag_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    if not rag_enabled or rag_model is None or rag_index is None:
+        return []
+
+def rag_save_to_disk() -> bool:
+    """rag_index와 rag_documents를 디스크에 저장"""
+    if not rag_enabled or rag_index is None:
+        return False
+    try:
+        os.makedirs(RAG_DIR, exist_ok=True)
+        # 문서 저장
+        docs_path = os.path.join(RAG_DIR, 'rag_docs.json')
+        with open(docs_path, 'w', encoding='utf-8') as f:
+            json.dump(rag_documents, f, ensure_ascii=False)
+        # 인덱스 저장
+        import faiss
+        index_path = os.path.join(RAG_DIR, 'rag.index')
+        faiss.write_index(rag_index, index_path)
+        return True
+    except Exception as e:
+        print(f"RAG 저장 실패: {e}")
+        return False
+
+def rag_load_from_disk() -> bool:
+    """rag_index와 rag_documents를 디스크에서 로드"""
+    global rag_documents, rag_index
+    try:
+        docs_path = os.path.join(RAG_DIR, 'rag_docs.json')
+        index_path = os.path.join(RAG_DIR, 'rag.index')
+        if not (os.path.isfile(docs_path) and os.path.isfile(index_path)):
+            return False
+        with open(docs_path, 'r', encoding='utf-8') as f:
+            rag_documents = json.load(f)
+        import faiss
+        rag_index = faiss.read_index(index_path)
+        return True
+    except Exception as e:
+        print(f"RAG 로드 실패: {e}")
+        return False
+    try:
+        import numpy as np
+        q = rag_model.encode([query], normalize_embeddings=True).astype('float32')
+        D, I = rag_index.search(q, top_k)
+        results = []
+        for idx, score in zip(I[0], D[0]):
+            if 0 <= idx < len(rag_documents):
+                doc = rag_documents[idx].copy()
+                doc['score'] = float(score)
+                results.append(doc)
+        return results
+    except Exception as e:
+        print(f"RAG 검색 실패: {e}")
+        return []
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({
@@ -101,10 +209,36 @@ def chat():
         modpack_name = data.get('modpack_name', 'Unknown Modpack')
         modpack_version = data.get('modpack_version', '1.0.0')
 
-        # 마인크래프트 모드팩 컨텍스트
+        # 마인크래프트 모드팩 컨텍스트 + RAG 첨부
+        rag_snippets = []
+        rag_hits_count = 0
+        rag_used_chars = 0
+        if rag_enabled:
+            hits = rag_search(message, top_k=RAG_TOP_K)
+            rag_hits_count = len(hits)
+            for h in hits:
+                if rag_used_chars >= RAG_TOTAL_MAX_CHARS:
+                    break
+                src = h.get('source', '') or 'unknown'
+                txt = (h.get('text', '') or '').replace('\n', ' ').strip()
+                if len(txt) > RAG_SNIPPET_MAX_CHARS:
+                    txt = txt[:RAG_SNIPPET_MAX_CHARS] + ' …'
+                # 총량 예산 체크
+                remaining = RAG_TOTAL_MAX_CHARS - rag_used_chars
+                if len(txt) > remaining:
+                    if remaining < 50:
+                        break
+                    txt = txt[:remaining] + ' …'
+                rag_snippets.append(f"- [출처:{src}] {txt}")
+                rag_used_chars += len(txt)
+        rag_block = "\n".join(rag_snippets) if rag_snippets else "(관련 문서 없음)"
+
         context = f"""
 당신은 마인크래프트 모드팩 전문가 AI 어시스턴트입니다.
 현재 모드팩: {modpack_name} v{modpack_version}
+
+아래는 관련 문서 검색 결과 일부입니다(필요 시만 참고):
+{rag_block}
 
 사용자의 질문에 대해 친절하고 정확하게 답변해주세요.
 제작법, 아이템 정보, 모드 설명 등을 포함할 수 있습니다.
@@ -114,18 +248,26 @@ def chat():
         if current_model == "gemini" and gemini_client:
             try:
                 # 웹검색 도구 설정
-                grounding_tool = types.Tool(google_search=types.GoogleSearch())
-                config = types.GenerateContentConfig(tools=[grounding_tool])
+                config = None
+                if GEMINI_WEBSEARCH_ENABLED:
+                    grounding_tool = types.Tool(google_search=types.GoogleSearch())
+                    config = types.GenerateContentConfig(tools=[grounding_tool])
                 
                 full_message = context + "\n\n사용자: " + message + "\n\n최신 정보가 필요하다면 웹 검색을 활용해서 정확한 답변을 제공해주세요."
                 
                 # 웹검색 지원 모델로 응답 생성
                 with track_model_usage("gemini-2.5-pro-web"):
-                    response = gemini_client.models.generate_content(
-                        model="gemini-2.5-pro",
-                        contents=full_message,
-                        config=config
-                    )
+                    if config is not None:
+                        response = gemini_client.models.generate_content(
+                            model="gemini-2.5-pro",
+                            contents=full_message,
+                            config=config
+                        )
+                    else:
+                        response = gemini_client.models.generate_content(
+                            model="gemini-2.5-pro",
+                            contents=full_message
+                        )
                     ai_response = response.text
             except Exception as e:
                 print(f"Gemini 웹검색 모드 실패, 기본 모드로 폴백: {e}")
@@ -193,7 +335,17 @@ def chat():
             "success": True,
             "response": ai_response,
             "model": current_model,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "rag": {
+                "enabled": rag_enabled,
+                "hits": rag_hits_count,
+                "used": rag_hits_count > 0,
+                "top_k": RAG_TOP_K,
+                "snippet_max_chars": RAG_SNIPPET_MAX_CHARS,
+                "total_max_chars": RAG_TOTAL_MAX_CHARS,
+                "used_chars": rag_used_chars
+            },
+            "websearch_enabled": GEMINI_WEBSEARCH_ENABLED
         })
 
     except Exception as e:
@@ -234,6 +386,51 @@ def get_models():
         })
     
     return jsonify({"models": models})
+
+# ---------------- RAG 관리 엔드포인트 ----------------
+@app.route('/rag/build', methods=['POST'])
+def rag_build():
+    """간단한 RAG 인덱스 구축 API
+    - 입력 형식 1: {"docs": [{"text": "...", "source": "..."}, ...]}
+    - 입력 형식 2: {"modpack_name": "...", "modpack_version": "...", "docs": [...]} (메타 포함)
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        docs = data.get('docs', [])
+        if not isinstance(docs, list) or not docs:
+            return jsonify({"success": False, "error": "docs 리스트가 필요합니다"}), 400
+        # 최소 필드 보정
+        normalized = []
+        for d in docs:
+            if isinstance(d, dict) and d.get('text'):
+                normalized.append({
+                    'text': d.get('text', ''),
+                    'source': d.get('source', 'manual')
+                })
+        if not normalized:
+            return jsonify({"success": False, "error": "유효한 문서가 없습니다"}), 400
+        ok = build_rag(normalized)
+        return jsonify({"success": ok, "count": len(normalized)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/rag/status', methods=['GET'])
+def rag_status():
+    return jsonify({
+        "enabled": rag_enabled,
+        "documents": len(rag_documents),
+        "model": bool(rag_model)
+    })
+
+@app.route('/rag/save', methods=['POST'])
+def rag_save():
+    ok = rag_save_to_disk()
+    return jsonify({"success": ok})
+
+@app.route('/rag/load', methods=['POST'])
+def rag_load():
+    ok = rag_load_from_disk()
+    return jsonify({"success": ok})
 
 @app.route('/models/switch', methods=['POST'])
 def switch_model():
@@ -285,7 +482,17 @@ def api_modpack_switch():
         if not modpack_name:
             return jsonify({"success": False, "error": "modpack_name is required"}), 400
 
-        # 반환 포맷은 modpack_switch.sh에서 파싱하는 키와 일치해야 함
+        # 간단 스캔 + RAG 자동 구축
+        stats = {}
+        built = False
+        if modpack_path and os.path.isdir(modpack_path):
+            scan = scan_modpack(modpack_path)
+            docs = scan.get('docs', [])
+            stats = scan.get('stats', {})
+            if docs:
+                built = build_rag(docs)
+
+        # 반환 포맷은 스크립트가 파싱하는 키와 일치해야 함
         result = {
             "success": True,
             "modpack": {
@@ -293,9 +500,10 @@ def api_modpack_switch():
                 "version": modpack_version,
                 "path": modpack_path,
             },
-            "mods_count": 0,
-            "recipes_count": 0,
-            "items_count": 0,
+            "mods_count": stats.get('mods', 0),
+            "recipes_count": stats.get('recipes', 0),
+            "items_count": stats.get('kubejs', 0),
+            "rag_built": built,
             "language_mappings_added": 0,
             "timestamp": datetime.now().isoformat()
         }
@@ -361,11 +569,13 @@ def get_recipe(item_name):
         else:
             recipe_text = f"{item_name}의 제작법을 찾을 수 없습니다. 게임 내 제작법 책을 확인해보세요."
 
+        # 3x3 레시피 구조(있으면 AI 응답 파싱, 기본은 텍스트만)
         recipe_info = {
             "item": item_name,
             "recipe": recipe_text,
+            "grid": [[None, None, None], [None, None, None], [None, None, None]],
             "materials": [],
-            "crafting_type": "unknown"
+            "crafting_type": "crafting_table"
         }
 
         return jsonify({
@@ -395,4 +605,5 @@ if __name__ == '__main__':
         print("💡 최소한 Google API 키(Gemini)를 설정하는 것을 권장합니다.")
     
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=False) 
+    init_rag()
+    app.run(host='0.0.0.0', port=5000, debug=False)

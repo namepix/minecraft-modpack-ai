@@ -92,12 +92,18 @@ class SecurityMiddleware:
         return True
     
     def validate_uuid(self, uuid_string):
-        """UUID 형식 검증"""
+        """UUID 형식 검증 (개발 편의를 위해 완화된 규칙 허용)
+        - 표준 UUID (8-4-4-4-12) 또는
+        - 간단한 플레이어 식별자: 영숫자/언더스코어/하이픈 3~32자
+        """
+        if not isinstance(uuid_string, str):
+            return False
         uuid_pattern = re.compile(
             r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
             re.IGNORECASE
         )
-        return bool(uuid_pattern.match(uuid_string))
+        simple_pattern = re.compile(r'^[A-Za-z0-9_-]{3,32}$')
+        return bool(uuid_pattern.match(uuid_string) or simple_pattern.match(uuid_string))
     
     def sanitize_input(self, text):
         """입력 데이터 정제"""

@@ -18,6 +18,12 @@ python-dotenv==1.0.0         # 환경변수 관리
 bleach==6.1.0                # 입력 데이터 정제
 psutil==5.9.6                # 시스템 리소스 모니터링
 
+# RAG (벡터 검색)
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+tqdm==4.66.4
+numpy==1.26.4
+
 # 테스트
 pytest==7.4.3               # 단위 테스트
 pytest-mock==3.12.0         # Mock 테스트

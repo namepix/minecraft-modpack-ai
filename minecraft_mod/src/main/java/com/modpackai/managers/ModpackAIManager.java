@@ -205,6 +205,54 @@ public class ModpackAIManager {
     }
     
     /**
+     * AI 모델 전환 (비동기)
+     */
+    public CompletableFuture<JsonObject> switchModelAsync(String modelId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return switchModel(modelId);
+            } catch (Exception e) {
+                LOGGER.error("모델 전환 실패", e);
+                JsonObject errorResponse = new JsonObject();
+                errorResponse.addProperty("success", false);
+                errorResponse.addProperty("error", "모델 전환 중 오류가 발생했습니다.");
+                return errorResponse;
+            }
+        });
+    }
+
+    /**
+     * AI 모델 전환 (동기)
+     */
+    public JsonObject switchModel(String modelId) throws Exception {
+        LOGGER.info("AI 모델 전환 요청: {}", modelId);
+        JsonObject requestData = new JsonObject();
+        requestData.addProperty("model_id", modelId);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(config.getBackendUrl() + "/models/switch"))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(requestData.toString()))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+            JsonObject responseData = gson.fromJson(response.body(), JsonObject.class);
+            // 성공 시 로컬 설정에도 반영
+            config.setPrimaryModel(modelId);
+            LOGGER.info("AI 모델 전환 성공: {}", modelId);
+            return responseData;
+        } else {
+            LOGGER.error("AI 모델 전환 실패: {} - {}", response.statusCode(), response.body());
+            JsonObject errorResponse = new JsonObject();
+            errorResponse.addProperty("success", false);
+            errorResponse.addProperty("error", "모델 전환을 완료할 수 없습니다.");
+            return errorResponse;
+        }
+    }
+
+    /**
      * 백엔드 서버 상태 확인
      */
     public boolean isBackendHealthy() {

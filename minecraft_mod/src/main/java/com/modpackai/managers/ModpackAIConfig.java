@@ -33,6 +33,8 @@ public class ModpackAIConfig {
     private int requestTimeout = 10000;
     private String primaryModel = "gemini";
     private boolean webSearchEnabled = true;
+    private String modpackName = "Unknown Modpack";
+    private String modpackVersion = "1.0.0";
     
     public ModpackAIConfig() {
         this.configPath = FMLPaths.CONFIGDIR.get().resolve(CONFIG_FILE_NAME);
@@ -91,6 +93,12 @@ public class ModpackAIConfig {
         ai.addProperty("primary_model", primaryModel);
         ai.addProperty("web_search_enabled", webSearchEnabled);
         config.add("ai", ai);
+
+        // 모드팩 정보 설정
+        JsonObject modpack = new JsonObject();
+        modpack.addProperty("name", modpackName);
+        modpack.addProperty("version", modpackVersion);
+        config.add("modpack", modpack);
         
         LOGGER.info("기본 설정 생성 완료");
     }
@@ -125,6 +133,13 @@ public class ModpackAIConfig {
                 JsonObject ai = config.getAsJsonObject("ai");
                 primaryModel = ai.has("primary_model") ? ai.get("primary_model").getAsString() : primaryModel;
                 webSearchEnabled = ai.has("web_search_enabled") ? ai.get("web_search_enabled").getAsBoolean() : webSearchEnabled;
+            }
+
+            // 모드팩 정보 설정
+            if (config.has("modpack")) {
+                JsonObject modpack = config.getAsJsonObject("modpack");
+                modpackName = modpack.has("name") ? modpack.get("name").getAsString() : modpackName;
+                modpackVersion = modpack.has("version") ? modpack.get("version").getAsString() : modpackVersion;
             }
             
             LOGGER.info("설정값 로드 완료 - Backend: {}, AI Item: {}", backendUrl, aiItemMaterial);
@@ -182,6 +197,14 @@ public class ModpackAIConfig {
     public boolean isWebSearchEnabled() {
         return webSearchEnabled;
     }
+
+    public String getModpackName() {
+        return modpackName;
+    }
+
+    public String getModpackVersion() {
+        return modpackVersion;
+    }
     
     // Setter 메소드들
     public void setBackendUrl(String backendUrl) {
@@ -206,5 +229,16 @@ public class ModpackAIConfig {
             config.add("ai", new JsonObject());
         }
         config.getAsJsonObject("ai").addProperty("web_search_enabled", enabled);
+    }
+
+    public void setModpackInfo(String name, String version) {
+        this.modpackName = name != null && !name.isBlank() ? name : this.modpackName;
+        this.modpackVersion = version != null && !version.isBlank() ? version : this.modpackVersion;
+        if (!config.has("modpack")) {
+            config.add("modpack", new JsonObject());
+        }
+        JsonObject modpack = config.getAsJsonObject("modpack");
+        modpack.addProperty("name", this.modpackName);
+        modpack.addProperty("version", this.modpackVersion);
     }
 }

@@ -1,7 +1,7 @@
 # ModpackAI NeoForge 모드 메타데이터
 
-modLoader="javafml"
-loaderVersion="[47,)"
+modLoader="neoforge"
+loaderVersion="[21,)"
 license="MIT"
 
 [[mods]]
