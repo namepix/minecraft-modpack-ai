@@ -145,21 +145,89 @@ pip install -r requirements.txt
 ```
 
 ### **2단계: NeoForge 모드 빌드**
+
+1) 프로젝트 경로로 이동
 ```bash
 cd ~/minecraft-modpack-ai/minecraft_mod
-
-# Gradle 래퍼가 있으면 우선 사용, 없으면 시스템 gradle 사용
-if [ -x "./gradlew" ]; then
-  ./gradlew clean build
-else
-  # 시스템에 gradle이 없다면 설치 후 실행
-  if ! command -v gradle &> /dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y gradle
-  fi
-  gradle clean build
-fi
 ```
+
+2) 플러그인 저장소 설정(settings.gradle/ settings.gradle.kts)
+- Groovy DSL(`settings.gradle`) 사용 시 다음 블록을 포함해야 합니다:
+```groovy
+pluginManagement {
+  repositories {
+    maven { url 'https://maven.neoforged.net/releases' }
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+dependencyResolutionManagement {
+  repositories {
+    maven { url 'https://maven.neoforged.net/releases' }
+    mavenCentral()
+  }
+}
+rootProject.name = 'modpackai'
+```
+- Kotlin DSL(`settings.gradle.kts`)을 사용한다면:
+```kotlin
+pluginManagement {
+  repositories {
+    maven("https://maven.neoforged.net/releases")
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+dependencyResolutionManagement {
+  repositories {
+    maven("https://maven.neoforged.net/releases")
+    mavenCentral()
+  }
+}
+rootProject.name = "modpackai"
+```
+
+3) Gradle 래퍼 사용(권장) 및 최신화
+- 시스템에 설치된 Debian 패키지 gradle(4.x)은 너무 구버전입니다. 사용하지 마세요.
+- 래퍼가 있으면 바로 사용:
+```bash
+if [ -x ./gradlew ]; then ./gradlew --version; fi
+```
+- 래퍼가 없거나 구버전이면 임시 Gradle로 래퍼 생성/업데이트:
+```bash
+# 임시 Gradle 8.10.2 설치(세션 한정 PATH)
+wget -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -O /tmp/gradle.zip
+sudo mkdir -p /opt/gradle && sudo unzip -q /tmp/gradle.zip -d /opt/gradle
+export PATH=/opt/gradle/gradle-8.10.2/bin:$PATH
+
+# 래퍼 생성/업데이트 후 래퍼만 사용
+gradle wrapper --gradle-version 8.10.2
+./gradlew --version
+```
+
+4) 빌드 실행
+```bash
+./gradlew --refresh-dependencies clean build
+```
+
+5) 참고: build.gradle(또는 build.gradle.kts)에 플러그인 선언이 있어야 합니다
+```groovy
+plugins {
+  id 'net.neoforged.gradle' version '7.0.80'
+}
+```
+Kotlin DSL일 경우 문법만 다르고 내용은 동일합니다.
+
+6) 쉬운 방법: 자동 준비/빌드 스크립트 사용(권장)
+```bash
+cd ~/minecraft-modpack-ai
+chmod +x scripts/prepare_mod_build.sh
+./scripts/prepare_mod_build.sh
+```
+설명:
+- Gradle 8.10.2 임시 설치 및 래퍼 생성/사용을 자동 처리
+- settings.gradle(.kts)에 NeoForged 저장소가 없으면 백업 후 안전하게 작성
+- `./gradlew --refresh-dependencies clean build` 실행 후 결과 JAR 경로 안내
 
 ### **3단계: 모드 설치**
 ```bash
