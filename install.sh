@@ -320,30 +320,37 @@ EOF
     # 모드팩 타입별 하이브리드 서버 설정
     if [[ "$modpack_type" == *"neoforge"* ]]; then
         # NeoForge 하이브리드 서버
+        log_warning "  ⚠️ 하이브리드 서버는 실험적 기술입니다. 운영 전 충분한 테스트가 필요합니다."
+        log_info "  💾 정기 백업 및 크래시 모니터링을 강력히 권장합니다."
+        
         if [ ! -f "youer-neoforge.jar" ]; then
             log_info "  📥 NeoForge 하이브리드 서버 다운로드 중..."
             
             # 버전별 다운로드
             if [[ "$modpack_type" == *"1.20.1"* ]] || [[ "$modpack" == "enigmatica_9e" ]]; then
-                # 1.20.1 NeoForge
-                log_info "  다운로드 중: NeoForge 1.20.1 (Youer)"
+                # 1.20.1 NeoForge - 우선순위: Youer > Arclight (GitHub) > Arclight (공식)
+                log_info "  다운로드 중: NeoForge 1.20.1 (Youer 우선)"
                 if wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versions/1.20.1/builds/latest/download" 2>/dev/null; then
                     log_success "  ✅ Youer NeoForge 1.20.1 다운로드 성공"
                 elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.20.1/arclight-neoforge-1.20.1.jar" 2>/dev/null; then
-                    log_success "  ✅ Arclight NeoForge 1.20.1 다운로드 성공 (대안)"
+                    log_success "  ✅ Arclight NeoForge 1.20.1 다운로드 성공 (GitHub)"
+                elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://arclight.izzel.io/api/v2/projects/arclight/versions/1.20.1/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Arclight NeoForge 1.20.1 다운로드 성공 (공식 사이트)"
                 else
-                    log_warning "  자동 다운로드 실패, 빈 파일 생성"
+                    log_error "  ❌ 모든 다운로드 시도 실패"
                     echo "# NeoForge 1.20.1 하이브리드 서버 수동 설치 필요" > youer-neoforge.jar
                 fi
             else
-                # 1.21 NeoForge
-                log_info "  다운로드 중: NeoForge 1.21 (Youer)"
+                # 1.21 NeoForge - 우선순위: Youer > Arclight (GitHub) > Arclight (공식)
+                log_info "  다운로드 중: NeoForge 1.21 (Youer 우선)"
                 if wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download" 2>/dev/null; then
                     log_success "  ✅ Youer NeoForge 1.21 다운로드 성공"
                 elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.21.1/arclight-neoforge-1.21.1.jar" 2>/dev/null; then
-                    log_success "  ✅ Arclight NeoForge 1.21 다운로드 성공 (대안)"
+                    log_success "  ✅ Arclight NeoForge 1.21 다운로드 성공 (GitHub)"
+                elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O youer-neoforge.jar "https://arclight.izzel.io/api/v2/projects/arclight/versions/1.21.1/builds/latest/download" 2>/dev/null; then
+                    log_success "  ✅ Arclight NeoForge 1.21 다운로드 성공 (공식 사이트)"
                 else
-                    log_warning "  자동 다운로드 실패, 빈 파일 생성"
+                    log_error "  ❌ 모든 다운로드 시도 실패"
                     echo "# NeoForge 1.21 하이브리드 서버 수동 설치 필요" > youer-neoforge.jar
                 fi
             fi
@@ -353,11 +360,12 @@ EOF
                 log_success "  ✅ NeoForge 하이브리드 서버 설치 완료"
             else
                 log_error "  ❌ NeoForge 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
-                log_info "  📋 수동 설치 방법:"
-                log_info "    1. https://mohistmc.com/downloads (Youer 또는 Mohist)"
-                log_info "    2. 또는 https://github.com/IzzelAliz/Arclight/releases (Arclight)"
-                log_info "    3. 다운로드 후 youer-neoforge.jar로 이름 변경"
-                log_info "    4. ~/$(basename $(pwd))/ 에 복사"
+                log_info "  📋 수동 설치 방법 (권장 순서):"
+                log_info "    1. Youer (권장): https://mohistmc.com/downloads/youer"
+                log_info "    2. Arclight (안정): https://arclight.izzel.io/ 또는 https://github.com/IzzelAliz/Arclight/releases"
+                log_info "    3. 다운로드 후 'youer-neoforge.jar'로 이름 변경"
+                log_info "    4. ~/$(basename $(pwd))/ 디렉토리에 복사"
+                log_warning "  ⚠️ 1.21 버전 Arclight는 불안정할 수 있으니 주의하세요"
             fi
         else
             log_info "  ✅ NeoForge 하이브리드 서버 이미 존재"
@@ -365,7 +373,7 @@ EOF
         
         HYBRID_JAR="youer-neoforge.jar"
         
-        # AI 지원 시작 스크립트 생성
+        # AI 지원 시작 스크립트 생성 (여러 후보 JAR 자동 감지 + 기존 파일명 호환)
         cat > start_with_ai.sh << 'EOFSCRIPT'
 #!/bin/bash
 echo "🚀 Starting $(basename $(pwd)) with AI Assistant (NeoForge Hybrid)..."
@@ -387,21 +395,39 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting with Youer/Arclight (NeoForge + Bukkit Hybrid)..."
 
-# 하이브리드 서버 존재 여부 확인
-if [ -f "youer-neoforge.jar" ] && [ $(stat -c%s "youer-neoforge.jar") -gt 1000 ]; then
-    java $JVM_ARGS -jar youer-neoforge.jar nogui
-else
-    echo "❌ 하이브리드 서버 파일이 없거나 손상되었습니다."
-    echo "수동으로 youer-neoforge.jar 파일을 설치하세요."
-    echo "가이드: guides/01_ADMIN_SETUP.md 참조"
+# 후보 JAR 자동 탐지 순서: youer-neoforge.jar, neoforge-hybrid.jar, arclight-neoforge*.jar
+JAR_CANDIDATES=(
+  "youer-neoforge.jar"
+  "neoforge-hybrid.jar"
+  $(ls -1 arclight-neoforge-*.jar 2>/dev/null | head -n1)
+)
+
+SELECTED_JAR=""
+for jf in "${JAR_CANDIDATES[@]}"; do
+  if [ -n "$jf" ] && [ -f "$jf" ] && [ $(stat -c%s "$jf" 2>/dev/null) -gt 1000 ]; then
+    SELECTED_JAR="$jf"
+    break
+  fi
+done
+
+if [ -z "$SELECTED_JAR" ]; then
+  echo "❌ 하이브리드 서버 JAR을 찾을 수 없습니다 (youer-neoforge.jar / neoforge-hybrid.jar / arclight-neoforge-*.jar)."
+  echo "   파일명을 확인하거나 수동 설치 스크립트를 사용하세요: manual_install_hybrid.sh"
+  exit 1
 fi
+
+echo "Using JAR: $SELECTED_JAR"
+java $JVM_ARGS -jar "$SELECTED_JAR" nogui
 EOFSCRIPT
 
     elif [[ "$modpack_type" == *"forge"* ]]; then
         # Forge 하이브리드 서버 (Mohist)
+        log_warning "  ⚠️ Mohist는 유지보수 모드 상태입니다. 프로덕션 환경에서 사용 시 주의하세요."
+        log_info "  💾 정기 백업 및 모니터링을 강력히 권장합니다."
+        
         if [[ "$modpack_type" == *"1.16.5"* ]]; then
             if [ ! -f "mohist-1.16.5.jar" ]; then
-                log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
+                log_info "  📥 Mohist 1.16.5 하이브리드 서버 다운로드 중... (가장 안정적인 버전)"
                 
                 # 최신 API 사용
                 if wget -q --connect-timeout=15 --timeout=45 --show-progress -O mohist-1.16.5.jar "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download" 2>/dev/null; then
@@ -413,7 +439,11 @@ EOFSCRIPT
                     else
                         echo "# Mohist 1.16.5 하이브리드 서버 수동 설치 필요" > mohist-1.16.5.jar
                         log_error "  ❌ Mohist 1.16.5 다운로드 실패 - 수동 설치 필요"
-                        log_info "  📋 수동 설치: https://mohistmc.com/downloads → 1.16.5 → mohist-1.16.5.jar"
+                        log_info "  📋 수동 설치 방법:"
+                        log_info "    1. https://mohistmc.com/downloads/mohist"
+                        log_info "    2. 1.16.5 버전 선택 후 다운로드"
+                        log_info "    3. 'mohist-1.16.5.jar'로 이름 변경"
+                        log_info "    4. ~/$(basename $(pwd))/ 디렉토리에 복사"
                     fi
                 fi
             fi
@@ -432,7 +462,11 @@ EOFSCRIPT
                     else
                         echo "# Mohist 1.20.1 하이브리드 서버 수동 설치 필요" > mohist-1.20.1.jar
                         log_error "  ❌ Mohist 1.20.1 다운로드 실패 - 수동 설치 필요"
-                        log_info "  📋 수동 설치: https://mohistmc.com/downloads → 1.20.1 → mohist-1.20.1.jar"
+                        log_info "  📋 수동 설치 방법:"
+                        log_info "    1. https://mohistmc.com/downloads/mohist"
+                        log_info "    2. 1.20.1 버전 선택 후 다운로드"
+                        log_info "    3. 'mohist-1.20.1.jar'로 이름 변경"
+                        log_info "    4. ~/$(basename $(pwd))/ 디렉토리에 복사"
                     fi
                 fi
             fi
@@ -460,35 +494,35 @@ java \$JVM_ARGS -jar $HYBRID_JAR nogui
 EOFSCRIPT
 
     elif [[ "$modpack_type" == *"fabric"* ]]; then
-        # Fabric 하이브리드 서버 (CardBoard/Banner)
+        # Fabric 하이브리드 서버 (CardBoard만 사용)
+        log_warning "  ⚠️ Fabric 하이브리드 서버는 매우 실험적입니다. 베타 단계 소프트웨어입니다."
+        log_warning "  ⚠️ 일부 플러그인이 작동하지 않을 수 있습니다."
+        log_info "  💾 정기 백업을 필수로 수행하세요."
+        
         if [ ! -f "cardboard.jar" ]; then
             log_info "  📥 Fabric 하이브리드 서버 다운로드 중..."
             
-            # 1순위: CardBoard (안정적인 릴리스)
-            if wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar" 2>/dev/null; then
+            # CardBoard만 사용 (Banner는 더 이상 유지보수되지 않음)
+            if wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4/cardboard-1.20.1-4.jar" 2>/dev/null; then
                 log_success "  ✅ CardBoard 1.20.1 다운로드 성공"
+            elif wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1-4.jar" 2>/dev/null; then
+                log_success "  ✅ CardBoard 최신 버전 다운로드 성공"
             else
-                log_warning "  CardBoard 다운로드 실패, Banner 시도 중..."
-                
-                # 2순위: Banner - 활발한 Fabric 하이브리드 대안
-                if wget -q --connect-timeout=15 --timeout=45 --show-progress -O cardboard.jar "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar" 2>/dev/null; then
-                    log_success "  ✅ Banner (Fabric 하이브리드) 다운로드 성공"
-                else
-                    log_warning "  Banner 다운로드도 실패, 수동 설치 준비"
-                    echo "# Fabric 하이브리드 서버 수동 설치 필요" > cardboard.jar
-                    log_error "  ❌ Fabric 하이브리드 서버 다운로드 실패 - 수동 설치 필요"
-                    log_info "  📋 수동 설치 옵션:"
-                    log_info "    1. https://github.com/CardboardPowered/cardboard/releases (CardBoard)"
-                    log_info "    2. https://github.com/Dueris/Banner/releases (Banner)"
-                    log_info "    3. cardboard.jar로 이름 변경하여 ~/$(basename $(pwd))/ 에 복사"
-                fi
+                echo "# Fabric 하이브리드 서버 수동 설치 필요" > cardboard.jar
+                log_error "  ❌ CardBoard 다운로드 실패 - 수동 설치 필요"
+                log_info "  📋 수동 설치 방법:"
+                log_info "    1. https://github.com/CardboardPowered/cardboard/releases"
+                log_info "    2. 최신 1.20.1 버전 다운로드"
+                log_info "    3. 'cardboard.jar'로 이름 변경"
+                log_info "    4. ~/$(basename $(pwd))/ 디렉토리에 복사"
+                log_warning "  ⚠️ Banner는 더 이상 유지보수되지 않아 권장하지 않습니다."
             fi
             
             # 다운로드 성공 여부 확인
             if [ -s "cardboard.jar" ] && [ $(stat -c%s "cardboard.jar") -gt 1000 ]; then
                 log_success "  ✅ Fabric 하이브리드 서버 설치 완료"
             else
-                log_error "  ❌ Fabric 하이브리드 서버 파일이 손상되었습니다"
+                log_error "  ❌ Fabric 하이브리드 서버 파일이 손상되었거나 다운로드에 실패했습니다"
             fi
         fi
         
@@ -614,6 +648,12 @@ echo "  🐍 Python 환경: $HOME/minecraft-ai-env"
 echo "  🎮 설정된 모드팩: ${#FOUND_MODPACKS[@]}개"
 echo "  ⚙️  systemd 서비스: mc-ai-backend"
 echo ""
+echo "⚠️ 하이브리드 서버 주의사항:"
+echo "  🔧 하이브리드 서버는 실험적 기술입니다"
+echo "  💾 정기 백업을 필수로 수행하세요"
+echo "  🐛 일부 플러그인/모드 호환성 문제가 있을 수 있습니다"
+echo "  📊 모니터링 및 로그 확인을 정기적으로 하세요"
+echo ""
 echo "📋 다음 단계 (필수):"
 echo ""
 echo "1️⃣ API 키 설정:"
@@ -627,9 +667,10 @@ echo ""
 echo "3️⃣ 백엔드 상태 확인:"
 echo "   curl http://localhost:5000/health"
 echo ""
-echo "4️⃣ 모드팩 서버 시작 (AI 지원):"
-echo "   cd ~/enigmatica_10"
+echo "4️⃣ 모드팩 서버 시작 (AI 지원) - 테스트 환경에서 먼저:"
+echo "   cd ~/test  # 테스트 모드팩으로 먼저 시도"
 echo "   ./start_with_ai.sh"
+echo "   # 정상 작동 확인 후 실제 모드팩 사용"
 echo ""
 echo "5️⃣ 게임 내 테스트:"
 echo "   /modpackai help"

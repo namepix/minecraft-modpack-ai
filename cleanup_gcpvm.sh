@@ -21,6 +21,17 @@ echo ""
 
 log_warning "⚠️ 주의: 이 스크립트는 AI 프로젝트 관련 파일만 삭제합니다"
 log_info "기존 모드팩 서버 파일들은 건드리지 않습니다"
+log_info "삭제 대상: AI 백엔드, 플러그인, 하이브리드 서버, systemd 서비스"
+log_info "보존 대상: 모드팩 서버, 월드 데이터, 설정 파일, 기존 플러그인"
+echo ""
+
+# 사용자 확인
+read -p "정말로 AI 프로젝트 파일을 정리하시겠습니까? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    log_info "작업이 취소되었습니다"
+    exit 0
+fi
 echo ""
 
 # 1. AI 백엔드 및 환경 삭제
@@ -86,31 +97,26 @@ for modpack in "${MODPACKS[@]}"; do
             fi
         fi
         
-        # 하이브리드 서버 JAR 파일들 삭제
-        if [ -f "youer-neoforge.jar" ]; then
-            rm -f "youer-neoforge.jar"
-            log_info "  ✅ youer-neoforge.jar 삭제"
-        fi
-        if [ -f "mohist-1.20.1.jar" ]; then
-            rm -f "mohist-1.20.1.jar"
-            log_info "  ✅ mohist-1.20.1.jar 삭제"
-        fi
-        if [ -f "mohist-1.16.5.jar" ]; then
-            rm -f "mohist-1.16.5.jar"
-            log_info "  ✅ mohist-1.16.5.jar 삭제"
-        fi
-        if [ -f "cardboard.jar" ]; then
-            rm -f "cardboard.jar"
-            log_info "  ✅ cardboard.jar 삭제"
-        fi
-        if [ -f "cardboard-1.20.1.jar" ]; then
-            rm -f "cardboard-1.20.1.jar"
-            log_info "  ✅ cardboard-1.20.1.jar 삭제"
-        fi
-        if [ -f "arclight-neoforge.jar" ]; then
-            rm -f "arclight-neoforge.jar"
-            log_info "  ✅ arclight-neoforge.jar 삭제"
-        fi
+        # 하이브리드 서버 JAR 파일들 삭제 (최신 파일명 포함)
+        HYBRID_JARS=(
+            "youer-neoforge.jar"
+            "mohist-1.20.1.jar" 
+            "mohist-1.16.5.jar"
+            "cardboard.jar"
+            "cardboard-1.20.1.jar"
+            "cardboard-1.20.1-4.jar"
+            "arclight-neoforge.jar"
+            "arclight-neoforge-1.20.1.jar"
+            "arclight-neoforge-1.21.1.jar"
+            "neoforge-hybrid.jar"
+        )
+        
+        for jar_file in "${HYBRID_JARS[@]}"; do
+            if [ -f "$jar_file" ]; then
+                rm -f "$jar_file"
+                log_info "  ✅ $jar_file 삭제"
+            fi
+        done
         
         # AI 지원 시작 스크립트 삭제
         if [ -f "start_with_ai.sh" ]; then
@@ -149,8 +155,22 @@ if [ -f "/etc/systemd/system/mc-ai-backend.service" ]; then
     log_success "✅ mc-ai-backend.service 삭제 완료"
 fi
 
-# 4. 전역 관리 스크립트 제거
-log_info "4. 전역 관리 스크립트 제거"
+# 4. Maven 캐시 정리 (플러그인 빌드 관련)
+log_info "4. Maven 캐시 정리"
+if [ -d "$HOME/.m2/repository" ]; then
+    log_info "Maven 캐시가 존재합니다"
+    read -p "Maven 캐시를 정리하시겠습니까? (플러그인 재빌드 시 다운로드 시간이 증가됩니다) (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "$HOME/.m2/repository"
+        log_success "✅ Maven 캐시 정리 완료"
+    else
+        log_info "Maven 캐시 보존"
+    fi
+fi
+
+# 5. 전역 관리 스크립트 제거
+log_info "5. 전역 관리 스크립트 제거"
 if [ -f "/usr/local/bin/modpack_switch" ]; then
     sudo rm -f "/usr/local/bin/modpack_switch"
     log_success "✅ modpack_switch 스크립트 삭제"
@@ -161,9 +181,9 @@ if [ -f "/usr/local/bin/mc-ai-monitor" ]; then
     log_success "✅ mc-ai-monitor 스크립트 삭제"
 fi
 
-# 5. mcrcon 제거 (AI 프로젝트에서 설치했다면)
+# 6. mcrcon 제거 (AI 프로젝트에서 설치했다면)
 if [ -d "$HOME/mcrcon" ]; then
-    log_info "5. mcrcon 디렉토리 삭제 (AI 프로젝트에서 설치된 경우)"
+    log_info "6. mcrcon 디렉토리 삭제 (AI 프로젝트에서 설치된 경우)"
     read -p "mcrcon을 삭제하시겠습니까? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then

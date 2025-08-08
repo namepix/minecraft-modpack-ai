@@ -32,8 +32,10 @@ echo "📋 각 모드팩에 하이브리드 서버 복사 중..."
 # NeoForge 모드팩들 (1.21)
 for modpack in enigmatica_10 atm10 carpg test; do
     if [ -d "$modpack" ]; then
+        # 파일명 호환: 기본 youer-neoforge.jar, 기존 neoforge-hybrid.jar도 함께 유지
         cp neoforge-hybrid-1.21.jar "$modpack/youer-neoforge.jar"
-        echo "✅ $modpack/youer-neoforge.jar 복사 완료"
+        cp neoforge-hybrid-1.21.jar "$modpack/neoforge-hybrid.jar"
+        echo "✅ $modpack/youer-neoforge.jar 및 neoforge-hybrid.jar 복사 완료"
     fi
 done
 
@@ -81,10 +83,13 @@ wget -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versi
 # 실패 시 Arclight 사용
 wget -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.21.1/arclight-neoforge-1.21.1.jar"
 
-# 다른 모드팩에 복사
+# 다른 모드팩에 복사 (기존 파일명 호환 포함)
 cp ~/enigmatica_10/youer-neoforge.jar ~/atm10/
+cp ~/enigmatica_10/youer-neoforge.jar ~/atm10/neoforge-hybrid.jar
 cp ~/enigmatica_10/youer-neoforge.jar ~/carpg/
+cp ~/enigmatica_10/youer-neoforge.jar ~/carpg/neoforge-hybrid.jar
 cp ~/enigmatica_10/youer-neoforge.jar ~/test/
+cp ~/enigmatica_10/youer-neoforge.jar ~/test/neoforge-hybrid.jar
 ```
 
 ### NeoForge 하이브리드 (1.20.1) - enigmatica_9e
@@ -92,6 +97,7 @@ cp ~/enigmatica_10/youer-neoforge.jar ~/test/
 ```bash
 cd ~/enigmatica_9e
 wget -O youer-neoforge.jar "https://github.com/IzzelAliz/Arclight/releases/download/1.20.1/arclight-neoforge-1.20.1.jar"
+cp youer-neoforge.jar neoforge-hybrid.jar
 ```
 
 ### Forge 하이브리드 (1.20.1) - integrated_MC, beyond_depth, cteserver
@@ -128,8 +134,8 @@ wget -O cardboard.jar "https://github.com/Dueris/Banner/releases/latest/download
 ## 3. 설치 확인
 
 ```bash
-# 각 모드팩에서 하이브리드 서버 파일 확인
-ls -la ~/*/youer-neoforge.jar ~/*/mohist-*.jar ~/*/cardboard.jar
+# 각 모드팩에서 하이브리드 서버 파일 확인 (양쪽 이름 모두 확인)
+ls -la ~/*/youer-neoforge.jar ~/*/neoforge-hybrid.jar ~/*/mohist-*.jar ~/*/cardboard.jar
 
 # AI 지원 시작 스크립트 테스트
 cd ~/enigmatica_10

@@ -134,21 +134,21 @@ EOF
             log_info "  📥 Youer NeoForge 하이브리드 서버 다운로드..."
             
             # Youer (NeoForge) 최신 버전 다운로드 시도
-            if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download"; then
+            if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download"; then
                 log_warning "  Youer 다운로드 실패, Mohist NeoForge로 대체 시도..."
                 
                 # 대체: Mohist NeoForge
-                if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://mohistmc.com/api/v2/projects/mohist/versions/1.21/builds/latest/download"; then
+                if ! wget -q --timeout=30 --show-progress -O youer-neoforge.jar "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.21/builds/latest/download"; then
                     log_error "  하이브리드 서버 다운로드 실패"
                     continue
                 fi
             fi
         fi
         
-        # AI 지원 시작 스크립트
+        # AI 지원 시작 스크립트 (여러 후보 JAR 자동 감지)
         cat > start_with_ai.sh << 'EOF'
 #!/bin/bash
-echo "🚀 Starting $PWD with AI Assistant (Arclight NeoForge)..."
+echo "🚀 Starting $PWD with AI Assistant (NeoForge Hybrid)..."
 
 # GCP VM 사양에 맞는 메모리 설정 (총 16GB 기준)
 MEMORY="-Xms6G -Xmx10G"
@@ -178,7 +178,29 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server..."
 
-java $JVM_OPTS -jar youer-neoforge.jar nogui
+# 후보 JAR 자동 탐지 순서: youer-neoforge.jar, neoforge-hybrid.jar, arclight-neoforge*.jar
+JAR_CANDIDATES=(
+  "youer-neoforge.jar"
+  "neoforge-hybrid.jar"
+  $(ls -1 arclight-neoforge-*.jar 2>/dev/null | head -n1)
+)
+
+SELECTED_JAR=""
+for jf in "${JAR_CANDIDATES[@]}"; do
+  if [ -n "$jf" ] && [ -f "$jf" ] && [ $(stat -c%s "$jf" 2>/dev/null) -gt 1000 ]; then
+    SELECTED_JAR="$jf"
+    break
+  fi
+done
+
+if [ -z "$SELECTED_JAR" ]; then
+  echo "❌ 하이브리드 서버 JAR을 찾을 수 없습니다 (youer-neoforge.jar / neoforge-hybrid.jar / arclight-neoforge-*.jar)."
+  echo "   파일명을 확인하거나 수동 설치 스크립트를 사용하세요: manual_install_hybrid.sh"
+  exit 1
+fi
+
+echo "Using JAR: $SELECTED_JAR"
+java $JVM_OPTS -jar "$SELECTED_JAR" nogui
 EOF
         
     elif [[ "$modpack_type" == *"forge-1.16.5"* ]]; then
@@ -215,7 +237,27 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server..."
 
-java $JVM_OPTS -jar mohist-1.16.5.jar nogui
+# 후보 자동 탐지: mohist-1.16.5.jar, mohist*.jar
+JAR_CANDIDATES=(
+  "mohist-1.16.5.jar"
+  $(ls -1 mohist-*.jar 2>/dev/null | head -n1)
+)
+
+SELECTED_JAR=""
+for jf in "${JAR_CANDIDATES[@]}"; do
+  if [ -n "$jf" ] && [ -f "$jf" ] && [ $(stat -c%s "$jf" 2>/dev/null) -gt 1000 ]; then
+    SELECTED_JAR="$jf"
+    break
+  fi
+done
+
+if [ -z "$SELECTED_JAR" ]; then
+  echo "❌ Mohist JAR을 찾을 수 없습니다."
+  exit 1
+fi
+
+echo "Using JAR: $SELECTED_JAR"
+java $JVM_OPTS -jar "$SELECTED_JAR" nogui
 EOF
         
     elif [[ "$modpack_type" == *"forge-1.20.1"* ]]; then
@@ -250,18 +292,38 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server..."
 
-java $JVM_OPTS -jar mohist-1.20.1.jar nogui
+# 후보 자동 탐지: mohist-1.20.1.jar, mohist*.jar
+JAR_CANDIDATES=(
+  "mohist-1.20.1.jar"
+  $(ls -1 mohist-*.jar 2>/dev/null | head -n1)
+)
+
+SELECTED_JAR=""
+for jf in "${JAR_CANDIDATES[@]}"; do
+  if [ -n "$jf" ] && [ -f "$jf" ] && [ $(stat -c%s "$jf" 2>/dev/null) -gt 1000 ]; then
+    SELECTED_JAR="$jf"
+    break
+  fi
+done
+
+if [ -z "$SELECTED_JAR" ]; then
+  echo "❌ Mohist JAR을 찾을 수 없습니다."
+  exit 1
+fi
+
+echo "Using JAR: $SELECTED_JAR"
+java $JVM_OPTS -jar "$SELECTED_JAR" nogui
 EOF
         
     elif [[ "$modpack_type" == *"fabric"* ]]; then
         # Fabric - CardBoard 사용
-        if [ ! -f "cardboard-1.20.1.jar" ]; then
+        if [ ! -f "cardboard-1.20.1.jar" ] && [ ! -f "cardboard.jar" ]; then
             log_info "  📥 CardBoard Fabric 하이브리드 서버 다운로드..."
             if ! wget -q --timeout=30 --show-progress -O cardboard-1.20.1.jar \
-                "https://github.com/CardboardPowered/cardboard/releases/latest/download/cardboard-1.20.1.jar"; then
+                "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
                 log_warning "  GitHub에서 CardBoard 다운로드 실패, 대체 URL 시도..."
                 if ! wget -q --timeout=30 --show-progress -O cardboard-1.20.1.jar \
-                    "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"; then
+                    "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar"; then
                     log_error "  CardBoard 다운로드 실패"
                     continue
                 fi
@@ -284,7 +346,28 @@ echo "Java version: $(java -version 2>&1 | head -n1)"
 echo "Memory: $MEMORY"
 echo "Starting server..."
 
-java $JVM_OPTS -jar cardboard-1.20.1.jar nogui
+# 후보 자동 탐지: cardboard-1.20.1.jar, cardboard.jar, banner-*.jar
+JAR_CANDIDATES=(
+  "cardboard-1.20.1.jar"
+  "cardboard.jar"
+  $(ls -1 banner-*.jar 2>/dev/null | head -n1)
+)
+
+SELECTED_JAR=""
+for jf in "${JAR_CANDIDATES[@]}"; do
+  if [ -n "$jf" ] && [ -f "$jf" ] && [ $(stat -c%s "$jf" 2>/dev/null) -gt 1000 ]; then
+    SELECTED_JAR="$jf"
+    break
+  fi
+done
+
+if [ -z "$SELECTED_JAR" ]; then
+  echo "❌ Fabric 하이브리드 JAR을 찾을 수 없습니다."
+  exit 1
+fi
+
+echo "Using JAR: $SELECTED_JAR"
+java $JVM_OPTS -jar "$SELECTED_JAR" nogui
 EOF
 
     fi

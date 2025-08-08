@@ -1,1132 +1,789 @@
-# 🛠️ GCP VM 관리자를 위한 AI 모드 추가 가이드
+# 🛠️ 관리자를 위한 AI 모드 추가 가이드
 
 ## 📋 개요
 
-이 가이드는 **GCP VM Debian** 환경에서 기존 마인크래프트 모드팩 서버들에 AI 어시스턴트 기능을 추가하는 방법을 상세히 설명합니다.
+이 가이드는 GCP VM Debian에서 기존 마인크래프트 모드팩 서버에 AI 모드를 추가하는 방법을 설명합니다.
 
-**⚠️ 중요**: 현재 모드팩들(Forge/NeoForge/Fabric)은 Bukkit 플러그인을 직접 지원하지 않으므로, 하이브리드 서버 솔루션을 사용합니다.
+### **🎯 설치 방법 선택**
 
-### **🎯 지원하는 모드팩들**
-```
-✅ enigmatica_10 (NeoForge)    ✅ enigmatica_9e (NeoForge)
-✅ enigmatica_6 (Forge)        ✅ integrated_MC (Forge) 
-✅ atm10 (NeoForge)           ✅ beyond_depth (Forge)
-✅ carpg (NeoForge)           ✅ cteserver (Forge)
-✅ prominence_2 (Fabric)      ✅ mnm (Forge)
-✅ test (NeoForge)
-```
+| 방법 | 설명 | 추천도 | 소요시간 |
+|------|------|--------|----------|
+| **🚀 완전 자동 설치** | 한 번의 명령어로 모든 설치 완료 | ⭐⭐⭐⭐⭐ | 10-15분 |
+| **🔧 단계별 설치** | 각 단계를 수동으로 진행 | ⭐⭐⭐ | 20-30분 |
 
 ---
 
 ## 🚀 방법 1: 완전 자동 설치 (권장)
 
 ### **사전 준비사항**
-- ✅ GCP VM Debian 11+ 환경
-- ✅ SSH 접속 가능 (`ssh namepix080@YOUR-VM-IP`)
-- ✅ 기존 모드팩 서버들이 `/home/namepix080/` 경로에 설치되어 있음
-- ✅ Google API 키 준비 (https://aistudio.google.com/app/apikey)
-- ✅ GCP 프로젝트 ID 및 Cloud Storage 버킷 준비 (RAG 기능용)
+- ✅ GCP VM Debian 서버에 SSH 접속 가능
+- ✅ 마인크래프트 모드팩 서버가 이미 설치되어 있음
+- ✅ API 키 준비 (OpenAI 필수, Anthropic/Google 선택)
 
 ### **1단계: 프로젝트 다운로드**
-
-**SSH로 GCP VM에 접속 후 다음 명령어 실행:**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
 cd ~
-
-# Git으로 프로젝트 클론 (권장)
-git clone https://github.com/YOUR_USERNAME/minecraft-modpack-ai.git
+git clone https://github.com/namepix/minecraft-modpack-ai.git
 cd minecraft-modpack-ai
-
-# 또는 로컬에서 파일 전송
-# scp -r . namepix080@YOUR-VM-IP:~/minecraft-modpack-ai/
 ```
 
-### **2단계: 자동 설치 실행**
+**설명**: 
+- `cd ~` : 홈 디렉토리로 이동
+- `git clone` : GitHub에서 프로젝트를 다운로드
+- `cd minecraft-modpack-ai` : 다운로드된 프로젝트 폴더로 이동
+
+### **2단계: 완전 자동 설치 실행**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
 
+**설명**: 
+- `chmod +x install.sh` : 설치 스크립트에 실행 권한을 부여
+- `./install.sh` : 설치 스크립트를 실행
+
 **이 스크립트가 자동으로 수행하는 작업:**
-- ✅ Python 3.8+ 및 필수 패키지 설치
-- ✅ Java 11+ 설치 확인
-- ✅ Maven 설치 및 플러그인 빌드
-- ✅ AI 백엔드 디렉토리 생성 (`/home/namepix080/minecraft-ai-backend/`)
-- ✅ systemd 서비스 등록
-- ✅ 모든 모드팩에 하이브리드 서버 및 플러그인 설치
-- ✅ 방화벽 설정 (포트 5000, 25565)
+- ✅ AI 백엔드 설치 및 설정
+- ✅ 플러그인 빌드 (의존성 자동 설치 포함)
+- ✅ 시작 스크립트 통일
+- ✅ 모든 모드팩에 플러그인 설치
+- ✅ API 키 설정 확인
+- ✅ 백엔드 서비스 시작
+- ✅ 모든 모드팩 AI 분석
 
-### **3단계: API 키 설정 (필수)**
+### **3단계: API 키 및 GCP 설정 (필수)**
+스크립트 실행 중 API 키 설정 안내가 나타납니다. 
 
-**3.1 환경 변수 파일 편집**
+**3.1 환경 변수 파일 열기**
+**터미널에서 다음 명령어를 입력하세요:**
+
 ```bash
 nano $HOME/minecraft-ai-backend/.env
 ```
 
-**3.2 API 키 입력**
-```env
-# 🌟 Google API 키 (Gemini 2.5 Pro용, 필수)
+**3.2 API 키 및 GCP 설정 입력**
+**편집기에서 파일 내용을 다음과 같이 수정하세요:**
+
+```bash
+# OpenAI API 키 (필수)
+OPENAI_API_KEY=sk-your-actual-openai-api-key
+
+# Anthropic API 키 (선택)
+ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-api-key
+
+# Google API 키 (선택)
 GOOGLE_API_KEY=your-actual-google-api-key
 
-# 📖 백업 모델 API 키들 (선택사항)
-OPENAI_API_KEY=sk-your-openai-api-key-here
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
-
-# 🌟 GCP 설정 (RAG 기능용, 필수)
-GCP_PROJECT_ID=your-gcp-project-id
-GCS_BUCKET_NAME=your-gcs-bucket-name
-
-# 🔧 서버 설정
-PORT=5000
-DEBUG=false
-LOG_LEVEL=INFO
-
-# 🎮 현재 모드팩 설정 (자동으로 감지되지만 수동 설정 가능)
-CURRENT_MODPACK_NAME=enigmatica_10
-CURRENT_MODPACK_VERSION=1.23.0
+# GCP 설정 (RAG 기능용, 필수)
+GCP_PROJECT_ID=your-actual-gcp-project-id
+GCS_BUCKET_NAME=your-actual-gcs-bucket-name
 ```
 
-**3.3 파일 저장**
-- `Ctrl + X` → `Y` → `Enter`
+**3.3 GCP 설정 방법**
+**GCP 프로젝트 ID 확인:**
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 상단의 프로젝트 선택 드롭다운에서 프로젝트 ID 확인
+3. 또는 `gcloud config get-value project` 명령어로 확인
 
-### **4단계: 백엔드 서비스 시작**
+**GCS 버킷 생성:**
+1. [Cloud Storage](https://console.cloud.google.com/storage/browser) 페이지 접속
+2. "버킷 만들기" 클릭
+3. 버킷 이름 입력 (예: `minecraft-ai-rag-data`)
+4. 지역 선택 (예: `us-central1`)
+5. "만들기" 클릭
+
+**3.4 파일 저장**
+**편집기에서 다음 키를 순서대로 눌러 저장하세요:**
+1. `Ctrl + X` (저장 및 종료)
+2. `Y` (변경사항 저장 확인)
+3. `Enter` (파일명 확인)
+
+**API 키 획득 방법:**
+- **OpenAI**: https://platform.openai.com/api-keys 에서 생성
+- **Anthropic**: https://console.anthropic.com/ 에서 생성
+- **Google**: https://makersuite.google.com/app/apikey 에서 생성
+
+### **4단계: 게임 서버 시작 및 테스트**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-sudo systemctl start mc-ai-backend
-sudo systemctl enable mc-ai-backend
-sudo systemctl status mc-ai-backend
-```
-
-### **5단계: 모드팩 서버에 하이브리드 지원 추가**
-
-**각 모드팩 서버에 Bukkit 호환성을 추가합니다:**
-
-```bash
-# 자동 하이브리드 설치 스크립트 실행
-cd ~/minecraft-modpack-ai
-chmod +x setup_hybrid_servers.sh
-./setup_hybrid_servers.sh
-```
-
-이 스크립트는 각 모드팩에 다음을 추가합니다:
-- **Mohist/Arclight/CatServer** (Forge+Bukkit 하이브리드)
-- **plugins/** 폴더 생성
-- **ModpackAI-1.0.jar** 플러그인 설치
-- **플러그인 설정 파일** 생성
-
-### **6단계: 테스트**
-
-**6.1 백엔드 API 테스트**
-```bash
-curl http://localhost:5000/health
-```
-예상 응답:
-```json
-{
-  "status": "healthy",
-  "current_model": "gemini",
-  "available_models": {
-    "gemini": true,
-    "openai": false,
-    "claude": false
-  }
-}
-```
-
-**6.2 모드팩 서버 시작**
-```bash
+# 모드팩 서버 시작
 cd ~/enigmatica_10
 ./start.sh
 ```
 
-**6.3 게임 내 테스트**
-```
-/modpackai help
-/ai 안녕하세요, 테스트입니다
-```
+**설명**: enigmatica_10 모드팩 서버를 시작합니다.
+
+**게임 내 테스트:**
+1. 게임에 접속
+2. `/modpackai help` 명령어로 사용법 확인
+3. `/give @p nether_star 1` 명령어로 AI 어시스턴트 아이템 획득
+4. 네더스타 아이템을 들고 우클릭하여 AI 채팅 테스트
 
 ---
 
-## 🔧 방법 2: 수동 단계별 설치
+## 🔧 방법 2: 단계별 설치
 
-### **1단계: 시스템 업데이트 및 필수 패키지 설치**
+### **사전 준비사항**
+- ✅ GCP VM Debian 서버에 SSH 접속 가능
+- ✅ 마인크래프트 모드팩 서버가 이미 설치되어 있음
+- ✅ API 키 준비 (OpenAI 필수, Anthropic/Google 선택)
+- ✅ Java 17 이상 설치됨
+- ✅ Maven 설치됨
+
+### **1단계: AI 백엔드 설치**
+
+**1.1 프로젝트 다운로드**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-
-# 필수 패키지 설치
-sudo apt install -y python3 python3-pip python3-venv python3-dev \
-  openjdk-17-jdk maven git curl wget unzip htop tree \
-  build-essential pkg-config libssl-dev libffi-dev
+cd ~
+git clone https://github.com/namepix/minecraft-modpack-ai.git
+cd minecraft-modpack-ai
 ```
 
-### **2단계: AI 백엔드 설치**
+**1.2 자동 설치 실행**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 백엔드 디렉토리 생성
-mkdir -p $HOME/minecraft-ai-backend/{logs,uploads,backups,data}
-cd $HOME/minecraft-ai-backend
-
-# Python 가상환경 생성
-python3 -m venv $HOME/minecraft-ai-env
-source $HOME/minecraft-ai-env/bin/activate
-
-# 프로젝트에서 백엔드 파일 복사
-cd ~/minecraft-modpack-ai
-cp -r backend/* $HOME/minecraft-ai-backend/
-cp env.example $HOME/minecraft-ai-backend/.env
-
-# Python 의존성 설치
-cd $HOME/minecraft-ai-backend
-pip install --upgrade pip
-pip install -r requirements.txt
+chmod +x install.sh
+./install.sh
 ```
 
-### **3단계: API 키 설정 (필수)**
+**설명**: 이 스크립트가 AI 백엔드, 데이터베이스, 서비스 등을 모두 설치합니다.
+
+### **2단계: 플러그인 빌드**
+
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 환경 변수 파일 편집
+cd minecraft_plugin
+mvn clean package
+cd ..
+```
+
+**설명**: 
+- `cd minecraft_plugin` : 플러그인 폴더로 이동
+- `mvn clean package` : Java 플러그인을 빌드
+- `cd ..` : 상위 폴더로 돌아가기
+
+**빌드된 파일 위치**: `minecraft_plugin/target/ModpackAI-1.0.jar`
+
+### **3단계: 시작 스크립트 통일**
+
+**3.1 스크립트 파일 생성**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+nano normalize_start_scripts.sh
+```
+
+**3.2 스크립트 내용 입력**
+**편집기에서 다음 내용을 복사하여 붙여넣으세요:**
+
+```bash
+#!/bin/bash
+
+# 모드팩 디렉토리 목록
+MODPACKS=(
+    "enigmatica_10"
+    "enigmatica_9e"
+    "enigmatica_6"
+    "integrated_MC"
+    "atm10"
+    "beyond_depth"
+    "carpg"
+    "cteserver"
+    "prominence_2"
+    "mnm"
+    "test"
+)
+
+echo "모드팩 시작 스크립트 통일 작업 시작..."
+
+for modpack in "${MODPACKS[@]}"; do
+    if [ -d "$HOME/$modpack" ]; then
+        echo "처리 중: $modpack"
+        cd "$HOME/$modpack"
+        
+        # 기존 start.sh가 있으면 백업
+        if [ -f "start.sh" ]; then
+            mv start.sh start.sh.backup
+        fi
+        
+        # 가능한 스크립트 파일들 찾기
+        if [ -f "start-server.sh" ]; then
+            mv start-server.sh start.sh
+            echo "  start-server.sh → start.sh"
+        elif [ -f "run.sh" ]; then
+            mv run.sh start.sh
+            echo "  run.sh → start.sh"
+        elif [ -f "start.bat" ]; then
+            # Windows 배치 파일을 Linux 스크립트로 변환
+            echo "#!/bin/bash" > start.sh
+            echo "java -jar server.jar nogui" >> start.sh
+            chmod +x start.sh
+            echo "  start.bat → start.sh (변환됨)"
+        else
+            echo "  ⚠️ 시작 스크립트를 찾을 수 없음"
+        fi
+        
+        # 실행 권한 부여
+        chmod +x start.sh
+    else
+        echo "⚠️ 디렉토리를 찾을 수 없음: $modpack"
+    fi
+done
+
+echo "스크립트 통일 작업 완료!"
+```
+
+**3.3 파일 저장**
+**편집기에서 다음 키를 순서대로 눌러 저장하세요:**
+1. `Ctrl + X` (저장 및 종료)
+2. `Y` (변경사항 저장 확인)
+3. `Enter` (파일명 확인)
+
+**3.4 스크립트 실행**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+chmod +x normalize_start_scripts.sh
+./normalize_start_scripts.sh
+```
+
+**설명**: 
+- `chmod +x` : 스크립트에 실행 권한 부여
+- `./normalize_start_scripts.sh` : 스크립트 실행
+
+### **4단계: 모든 모드팩에 플러그인 설치**
+
+**4.1 스크립트 파일 생성**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+nano setup_all_modpacks.sh
+```
+
+**4.2 스크립트 내용 입력**
+**편집기에서 다음 내용을 복사하여 붙여넣으세요:**
+
+```bash
+#!/bin/bash
+
+# 모드팩 디렉토리 목록
+MODPACKS=(
+    "enigmatica_10"
+    "enigmatica_9e"
+    "enigmatica_6"
+    "integrated_MC"
+    "atm10"
+    "beyond_depth"
+    "carpg"
+    "cteserver"
+    "prominence_2"
+    "mnm"
+    "test"
+)
+
+echo "모든 모드팩에 AI 플러그인 설치 시작..."
+
+for modpack in "${MODPACKS[@]}"; do
+    if [ -d "$HOME/$modpack" ]; then
+        echo "설치 중: $modpack"
+        
+        # plugins 디렉토리 생성
+        mkdir -p "$HOME/$modpack/plugins/ModpackAI"
+        
+        # 플러그인 파일 복사
+        cp minecraft_plugin/target/ModpackAI-1.0.jar "$HOME/$modpack/plugins/"
+        
+        # 설정 파일 생성 (최신 키 스키마)
+        cat > "$HOME/$modpack/plugins/ModpackAI/config.yml" << EOF
+ai:
+  server_url: "http://localhost:5000"
+  modpack_name: "$modpack"
+  modpack_version: "latest"
+
+ai_item:
+  material: "NETHER_STAR"
+  name: "§6§l모드팩 AI 어시스턴트"
+  lore:
+    - "§7우클릭하여 AI와 대화하세요"
+    - "§7모드팩 관련 질문에 답변해드립니다"
+
+permissions:
+  require_permission: false
+  node: "modpackai.use"
+  admin_node: "modpackai.admin"
+EOF
+        
+        echo "✅ $modpack 설치 완료"
+    else
+        echo "⚠️ 디렉토리를 찾을 수 없음: $modpack"
+    fi
+done
+
+echo "모든 모드팩 설치 완료!"
+```
+
+**4.3 파일 저장**
+**편집기에서 다음 키를 순서대로 눌러 저장하세요:**
+1. `Ctrl + X` (저장 및 종료)
+2. `Y` (변경사항 저장 확인)
+3. `Enter` (파일명 확인)
+
+**4.4 스크립트 실행**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+chmod +x setup_all_modpacks.sh
+./setup_all_modpacks.sh
+```
+
+### **5단계: API 키 및 GCP 설정**
+
+**5.1 환경 변수 파일 열기**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
 nano $HOME/minecraft-ai-backend/.env
 ```
 
-**다음 내용으로 API 키를 설정하세요:**
+**5.2 API 키 및 GCP 설정 입력**
+**편집기에서 파일 내용을 다음과 같이 수정하세요:**
 
-```env
-# 🌟 Google API 키 (Gemini 2.5 Pro용, 필수)
+```bash
+# OpenAI API 키 (필수)
+OPENAI_API_KEY=sk-your-actual-openai-api-key
+
+# Anthropic API 키 (선택)
+ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-api-key
+
+# Google API 키 (선택)
 GOOGLE_API_KEY=your-actual-google-api-key
 
-# 📖 백업 모델 API 키들 (선택사항)
-OPENAI_API_KEY=sk-your-openai-api-key-here
-ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
-
-# 🌟 GCP 설정 (RAG 기능용, 필수)
-GCP_PROJECT_ID=your-gcp-project-id
-GCS_BUCKET_NAME=your-gcs-bucket-name
-
-# 🔧 서버 설정
-PORT=5000
-DEBUG=false
-LOG_LEVEL=INFO
-
-# 🎮 현재 모드팩 설정 (자동으로 감지되지만 수동 설정 가능)
-CURRENT_MODPACK_NAME=enigmatica_10
-CURRENT_MODPACK_VERSION=1.23.0
+# GCP 설정 (RAG 기능용, 필수)
+GCP_PROJECT_ID=direct-outlook-463412-s3
+GCS_BUCKET_NAME=mc-ai-poc-mod-data
 ```
 
-**파일 저장**: `Ctrl + X` → `Y` → `Enter`
+**5.3 GCP 설정 방법**
+**GCP 프로젝트 ID 확인:**
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 상단의 프로젝트 선택 드롭다운에서 프로젝트 ID 확인
+3. 또는 `gcloud config get-value project` 명령어로 확인
 
-**API 키 획득:**
-- Google AI Studio: https://aistudio.google.com/app/apikey
-- OpenAI (선택): https://platform.openai.com/api-keys  
-- Anthropic (선택): https://console.anthropic.com/
+**GCS 버킷 생성:**
+1. [Cloud Storage](https://console.cloud.google.com/storage/browser) 페이지 접속
+2. "버킷 만들기" 클릭
+3. 버킷 이름 입력 (예: `minecraft-ai-rag-data`)
+4. 지역 선택 (예: `us-central1`)
+5. "만들기" 클릭
 
-### **4단계: Minecraft 플러그인 빌드**
+**5.4 파일 저장**
+**편집기에서 다음 키를 순서대로 눌러 저장하세요:**
+1. `Ctrl + X` (저장 및 종료)
+2. `Y` (변경사항 저장 확인)
+3. `Enter` (파일명 확인)
 
-```bash
-cd ~/minecraft-modpack-ai/minecraft_plugin
+### **6단계: 백엔드 서비스 시작**
 
-# Maven 캐시 정리 및 의존성 강제 업데이트
-mvn clean package -U -Dmaven.test.skip=true
-
-# 빌드 결과 확인 (실제 생성되는 파일명들)
-ls -la target/*.jar
-
-# 주요 JAR 파일들:
-# - modpack-ai-plugin-1.0.0.jar (원본)
-# - modpack-ai-plugin-1.0.0-shaded.jar (의존성 포함)
-# 플러그인 설치 시 사용할 JAR 파일 확인
-PLUGIN_JAR=$(find target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
-echo "사용할 플러그인 JAR: $PLUGIN_JAR"
-
-# Java 버전 확인 (Java 17 필요)
-java -version
-```
-
-### **5단계: 모든 모드팩에 하이브리드 서버 및 플러그인 설치**
-
-**전체 모드팩 목록 (GCP VM 기준):**
-- **NeoForge**: `enigmatica_10`, `enigmatica_9e`, `atm10`, `carpg`, `test`  
-- **Forge 1.20.1**: `integrated_MC`, `beyond_depth`, `cteserver`
-- **Forge 1.16.5**: `enigmatica_6`, `mnm`
-- **Fabric**: `prominence_2`
-
-#### **5.1 NeoForge 모드팩들 설치 (5개)**
-
-**대상 모드팩**: `enigmatica_10`, `enigmatica_9e`, `atm10`, `carpg`, `test`
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# NeoForge 모드팩들에 공통 설치 스크립트
-NEOFORGE_MODPACKS=("enigmatica_10" "enigmatica_9e" "atm10" "carpg" "test")
-
-for modpack in "${NEOFORGE_MODPACKS[@]}"; do
-  echo "🔧 $modpack 모드팩 설정 중..."
-  cd "$HOME/$modpack"
-  
-  # NeoForge 하이브리드 서버 다운로드 (버전별 분리)
-  if [[ "$modpack" == "enigmatica_9e" ]]; then
-    # 1.20.1 NeoForge
-    if [ ! -f "youer-neoforge.jar" ]; then
-      echo "📥 Youer NeoForge 1.20.1 하이브리드 서버 다운로드 중..."
-      wget -q -O youer-neoforge.jar \
-        "https://api.mohistmc.com/api/v2/projects/youer/versions/1.20.1/builds/latest/download" || \
-      wget -q -O youer-neoforge.jar \
-        "https://github.com/IzzelAliz/Arclight/releases/download/1.20.1/arclight-neoforge-1.20.1.jar"
-    fi
-  else
-    # 1.21 NeoForge
-    if [ ! -f "youer-neoforge.jar" ]; then
-      echo "📥 Youer NeoForge 1.21 하이브리드 서버 다운로드 중..."
-      wget -q -O youer-neoforge.jar \
-        "https://api.mohistmc.com/api/v2/projects/youer/versions/1.21.1/builds/latest/download" || \
-      wget -q -O youer-neoforge.jar \
-        "https://github.com/IzzelAliz/Arclight/releases/download/1.21.1/arclight-neoforge-1.21.1.jar"
-    fi
-  fi
-  
-  # 플러그인 디렉토리 생성 및 복사
-  mkdir -p plugins/ModpackAI
-  
-  # 실제 빌드된 JAR 파일 찾아서 복사
-  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
-  if [ -f "$PLUGIN_JAR" ]; then
-    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
-    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
-  else
-    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
-    exit 1
-  fi
-  
-  # 플러그인 설정 파일 생성
-  cat > plugins/ModpackAI/config.yml << EOF
-# ModpackAI 플러그인 설정 - $modpack
-
-ai:
-  server_url: "http://localhost:5000"
-  modpack_name: "$modpack"
-  modpack_version: "latest"
-
-ai_item:
-  material: "BOOK"
-  name: "§6§l모드팩 AI 어시스턴트"
-  lore:
-    - "§7우클릭하여 AI와 대화하세요"
-    - "§7모드팩 관련 질문에 답변해드립니다"
-    - ""
-    - "§e§l사용법:"
-    - "§f- 우클릭: AI 채팅창 열기"
-    - "§f- 제작법 질문 시 자동으로 표시"
-
-gui:
-  chat_title: "§6§l모드팩 AI 어시스턴트"
-  chat_size: 54
-  recipe_title: "§6§l제작법"
-  recipe_size: 27
-
-messages:
-  no_permission: "§c이 기능을 사용할 권한이 없습니다."
-  ai_error: "§cAI 서버와 통신 중 오류가 발생했습니다."
-  recipe_not_found: "§c제작법을 찾을 수 없습니다."
-  item_given: "§aAI 어시스턴트 아이템을 받았습니다!"
-
-permissions:
-  require_permission: false
-  node: "modpackai.use"
-  admin_node: "modpackai.admin"
-
-debug:
-  enabled: false
-EOF
-  
-  # 기존 시작 스크립트 백업
-  if [ -f "start.sh" ]; then
-    cp start.sh start.sh.backup
-  fi
-  
-  # AI 지원 시작 스크립트 생성
-  cat > start_with_ai.sh << 'EOFSCRIPT'
-#!/bin/bash
-echo "🚀 Starting $PWD with AI Assistant (Arclight NeoForge)..."
-
-# GCP VM 사양에 맞는 메모리 설정
-MEMORY="-Xms6G -Xmx10G"
-
-# JVM 최적화 파라미터
-JVM_OPTS="$MEMORY \
-  -XX:+UseG1GC \
-  -XX:+ParallelRefProcEnabled \
-  -XX:MaxGCPauseMillis=200 \
-  -XX:+UnlockExperimentalVMOptions \
-  -XX:+DisableExplicitGC \
-  -XX:+AlwaysPreTouch \
-  -XX:G1NewSizePercent=30 \
-  -XX:G1MaxNewSizePercent=40 \
-  -XX:G1HeapRegionSize=8M \
-  -XX:G1ReservePercent=20 \
-  -XX:G1HeapWastePercent=5 \
-  -XX:G1MixedGCCountTarget=4 \
-  -XX:InitiatingHeapOccupancyPercent=15 \
-  -XX:G1MixedGCLiveThresholdPercent=90 \
-  -XX:G1RSetUpdatingPauseTimePercent=5 \
-  -XX:SurvivorRatio=32 \
-  -XX:+PerfDisableSharedMem \
-  -XX:MaxTenuringThreshold=1"
-
-echo "Java version: $(java -version 2>&1 | head -n1)"
-echo "Memory: $MEMORY"
-echo "Starting server with Arclight NeoForge hybrid..."
-
-java $JVM_OPTS -jar youer-neoforge.jar nogui
-EOFSCRIPT
-
-  chmod +x start_with_ai.sh
-  echo "✅ $modpack 설정 완료"
-  echo ""
-done
-```
-
-#### **5.2 Forge 1.20.1 모드팩들 설치 (3개)**
-
-**대상 모드팩**: `integrated_MC`, `beyond_depth`, `cteserver`
-
-```bash
-# Forge 1.20.1 모드팩들에 공통 설치 스크립트
-FORGE_1201_MODPACKS=("integrated_MC" "beyond_depth" "cteserver")
-
-for modpack in "${FORGE_1201_MODPACKS[@]}"; do
-  echo "🔧 $modpack 모드팩 설정 중..."
-  cd "$HOME/$modpack"
-  
-  # Mohist 1.20.1 하이브리드 서버 다운로드
-  if [ ! -f "mohist-1.20.1.jar" ]; then
-    echo "📥 Mohist 1.20.1 하이브리드 서버 다운로드 중..."
-    wget -q -O mohist-1.20.1.jar \
-      "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.20.1/builds/latest/download"
-    
-    # 다운로드 실패 시 수동 설치 안내
-    if [ ! -s "mohist-1.20.1.jar" ]; then
-      echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
-      echo "1. https://mohistmc.com/downloads 에서 1.20.1 버전 다운로드"
-      echo "2. mohist-1.20.1.jar로 이름 변경하여 $PWD/ 에 복사"
-    fi
-  fi
-  
-  # 플러그인 디렉토리 생성 및 복사
-  mkdir -p plugins/ModpackAI
-  
-  # 실제 빌드된 JAR 파일 찾아서 복사
-  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
-  if [ -f "$PLUGIN_JAR" ]; then
-    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
-    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
-  else
-    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
-    exit 1
-  fi
-  
-  # 플러그인 설정 파일 생성 (NeoForge와 동일)
-  cat > plugins/ModpackAI/config.yml << EOF
-# ModpackAI 플러그인 설정 - $modpack
-
-ai:
-  server_url: "http://localhost:5000"
-  modpack_name: "$modpack"
-  modpack_version: "latest"
-
-ai_item:
-  material: "BOOK"
-  name: "§6§l모드팩 AI 어시스턴트"
-  lore:
-    - "§7우클릭하여 AI와 대화하세요"
-    - "§7모드팩 관련 질문에 답변해드립니다"
-    - ""
-    - "§e§l사용법:"
-    - "§f- 우클릭: AI 채팅창 열기"
-    - "§f- 제작법 질문 시 자동으로 표시"
-
-gui:
-  chat_title: "§6§l모드팩 AI 어시스턴트"
-  chat_size: 54
-  recipe_title: "§6§l제작법"
-  recipe_size: 27
-
-messages:
-  no_permission: "§c이 기능을 사용할 권한이 없습니다."
-  ai_error: "§cAI 서버와 통신 중 오류가 발생했습니다."
-  recipe_not_found: "§c제작법을 찾을 수 없습니다."
-  item_given: "§aAI 어시스턴트 아이템을 받았습니다!"
-
-permissions:
-  require_permission: false
-  node: "modpackai.use"
-  admin_node: "modpackai.admin"
-
-debug:
-  enabled: false
-EOF
-  
-  # 기존 시작 스크립트 백업
-  if [ -f "start.sh" ]; then
-    cp start.sh start.sh.backup
-  fi
-  
-  # AI 지원 시작 스크립트 생성
-  cat > start_with_ai.sh << EOFSCRIPT
-#!/bin/bash
-echo "🚀 Starting $PWD with AI Assistant (Mohist 1.20.1)..."
-
-# 메모리 설정
-MEMORY="-Xms4G -Xmx8G"
-
-# JVM 최적화 옵션
-JVM_ARGS="\$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \\
-  -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions \\
-  -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 \\
-  -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M \\
-  -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 \\
-  -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15"
-
-echo "Java version: \$(java -version 2>&1 | head -n1)"
-echo "Memory: \$MEMORY"
-echo "Starting server with Mohist (Forge + Bukkit Hybrid)..."
-
-java \$JVM_ARGS -jar mohist-1.20.1.jar nogui
-EOFSCRIPT
-
-  chmod +x start_with_ai.sh
-  echo "✅ $modpack 설정 완료"
-  echo ""
-done
-```
-
-#### **5.3 Forge 1.16.5 모드팩들 설치 (2개)**
-
-**대상 모드팩**: `enigmatica_6`, `mnm`
-
-```bash
-# Forge 1.16.5 모드팩들에 공통 설치 스크립트
-FORGE_1165_MODPACKS=("enigmatica_6" "mnm")
-
-for modpack in "${FORGE_1165_MODPACKS[@]}"; do
-  echo "🔧 $modpack 모드팩 설정 중..."
-  cd "$HOME/$modpack"
-  
-  # Mohist 1.16.5 하이브리드 서버 다운로드
-  if [ ! -f "mohist-1.16.5.jar" ]; then
-    echo "📥 Mohist 1.16.5 하이브리드 서버 다운로드 중..."
-    wget -q -O mohist-1.16.5.jar \
-      "https://api.mohistmc.com/api/v2/projects/mohist/versions/1.16.5/builds/latest/download"
-    
-    # 다운로드 실패 시 수동 설치 안내
-    if [ ! -s "mohist-1.16.5.jar" ]; then
-      echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
-      echo "1. https://mohistmc.com/downloads 에서 1.16.5 버전 다운로드"
-      echo "2. mohist-1.16.5.jar로 이름 변경하여 $PWD/ 에 복사"
-    fi
-  fi
-  
-  # 플러그인 디렉토리 생성 및 복사
-  mkdir -p plugins/ModpackAI
-  
-  # 실제 빌드된 JAR 파일 찾아서 복사
-  PLUGIN_JAR=$(find ~/minecraft-modpack-ai/minecraft_plugin/target -name "*shaded*.jar" -o -name "modpack-ai-plugin-*.jar" | head -1)
-  if [ -f "$PLUGIN_JAR" ]; then
-    cp "$PLUGIN_JAR" plugins/ModpackAI-1.0.jar
-    echo "  ✅ 플러그인 설치: $PLUGIN_JAR → plugins/ModpackAI-1.0.jar"
-  else
-    echo "  ❌ 플러그인 JAR 파일을 찾을 수 없습니다. mvn clean package를 먼저 실행하세요."
-    exit 1
-  fi
-  
-  # 플러그인 설정 파일 생성
-  cat > plugins/ModpackAI/config.yml << EOF
-# ModpackAI 플러그인 설정 - $modpack
-
-ai:
-  server_url: "http://localhost:5000"
-  modpack_name: "$modpack"
-  modpack_version: "latest"
-
-ai_item:
-  material: "BOOK"
-  name: "§6§l모드팩 AI 어시스턴트"
-  lore:
-    - "§7우클릭하여 AI와 대화하세요"
-    - "§7모드팩 관련 질문에 답변해드립니다"
-    - ""
-    - "§e§l사용법:"
-    - "§f- 우클릭: AI 채팅창 열기"
-    - "§f- 제작법 질문 시 자동으로 표시"
-
-gui:
-  chat_title: "§6§l모드팩 AI 어시스턴트"
-  chat_size: 54
-  recipe_title: "§6§l제작법"
-  recipe_size: 27
-
-messages:
-  no_permission: "§c이 기능을 사용할 권한이 없습니다."
-  ai_error: "§cAI 서버와 통신 중 오류가 발생했습니다."
-  recipe_not_found: "§c제작법을 찾을 수 없습니다."
-  item_given: "§aAI 어시스턴트 아이템을 받았습니다!"
-
-permissions:
-  require_permission: false
-  node: "modpackai.use"
-  admin_node: "modpackai.admin"
-
-debug:
-  enabled: false
-EOF
-  
-  # 기존 시작 스크립트 백업
-  if [ -f "start.sh" ]; then
-    cp start.sh start.sh.backup
-  fi
-  
-  # AI 지원 시작 스크립트 생성
-  cat > start_with_ai.sh << EOFSCRIPT
-#!/bin/bash
-echo "🚀 Starting $PWD with AI Assistant (Mohist 1.16.5)..."
-
-# 메모리 설정
-MEMORY="-Xms4G -Xmx8G"
-
-# JVM 최적화 옵션
-JVM_ARGS="\$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \\
-  -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions \\
-  -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 \\
-  -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M \\
-  -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5"
-
-echo "Java version: \$(java -version 2>&1 | head -n1)"
-echo "Memory: \$MEMORY"
-echo "Starting server with Mohist (Forge + Bukkit Hybrid)..."
-
-java \$JVM_ARGS -jar mohist-1.16.5.jar nogui
-EOFSCRIPT
-
-  chmod +x start_with_ai.sh
-  echo "✅ $modpack 설정 완료"
-  echo ""
-done
-```
-
-#### **5.4 Fabric 모드팩 설치 (1개)**
-
-**대상 모드팩**: `prominence_2`
-
-```bash
-echo "🔧 prominence_2 모드팩 설정 중..."
-cd "$HOME/prominence_2"
-
-# CardBoard Fabric 하이브리드 서버 다운로드
-if [ ! -f "cardboard.jar" ]; then
-  echo "📥 CardBoard Fabric 하이브리드 서버 다운로드 중..."
-  # 실제 작동하는 CardBoard 버전
-  wget -q -O cardboard.jar \
-    "https://github.com/CardboardPowered/cardboard/releases/download/1.20.1-4.0.6/cardboard-1.20.1-4.0.6.jar"
-  
-  # 다운로드 실패 시 Banner 대안 시도
-  if [ ! -s "cardboard.jar" ]; then
-    echo "CardBoard 다운로드 실패, Banner (대안) 시도 중..."
-    wget -q -O cardboard.jar \
-      "https://github.com/Dueris/Banner/releases/latest/download/banner-1.20.1.jar"
-  fi
-  
-  if [ ! -s "cardboard.jar" ]; then
-    echo "⚠️ 자동 다운로드 실패. 수동 설치 필요:"
-    echo "1. https://github.com/CardboardPowered/cardboard/releases 또는"
-    echo "2. https://github.com/Dueris/Banner/releases 에서 다운로드"
-    echo "3. cardboard.jar로 이름 변경하여 $PWD/ 에 복사"
-  fi
-fi
-
-# 플러그인 디렉토리 생성 및 복사
-mkdir -p plugins/ModpackAI
-cp ~/minecraft-modpack-ai/minecraft_plugin/target/ModpackAI-1.0.jar plugins/
-
-# 플러그인 설정 파일 생성
-cat > plugins/ModpackAI/config.yml << EOF
-# ModpackAI 플러그인 설정 - prominence_2
-
-ai:
-  server_url: "http://localhost:5000"
-  modpack_name: "prominence_2"
-  modpack_version: "latest"
-
-ai_item:
-  material: "BOOK"
-  name: "§6§l모드팩 AI 어시스턴트"
-  lore:
-    - "§7우클릭하여 AI와 대화하세요"
-    - "§7모드팩 관련 질문에 답변해드립니다"
-    - ""
-    - "§e§l사용법:"
-    - "§f- 우클릭: AI 채팅창 열기"
-    - "§f- 제작법 질문 시 자동으로 표시"
-
-gui:
-  chat_title: "§6§l모드팩 AI 어시스턴트"
-  chat_size: 54
-  recipe_title: "§6§l제작법"
-  recipe_size: 27
-
-messages:
-  no_permission: "§c이 기능을 사용할 권한이 없습니다."
-  ai_error: "§cAI 서버와 통신 중 오류가 발생했습니다."
-  recipe_not_found: "§c제작법을 찾을 수 없습니다."
-  item_given: "§aAI 어시스턴트 아이템을 받았습니다!"
-
-permissions:
-  require_permission: false
-  node: "modpackai.use"
-  admin_node: "modpackai.admin"
-
-debug:
-  enabled: false
-EOF
-
-# 기존 시작 스크립트 백업
-if [ -f "start.sh" ]; then
-  cp start.sh start.sh.backup
-fi
-
-# AI 지원 시작 스크립트 생성
-cat > start_with_ai.sh << 'EOF'
-#!/bin/bash
-echo "🚀 Starting prominence_2 with AI Assistant (CardBoard Fabric)..."
-
-# 메모리 설정
-MEMORY="-Xms4G -Xmx6G"
-
-# JVM 최적화 옵션
-JVM_ARGS="$MEMORY -XX:+UseG1GC -XX:+ParallelRefProcEnabled \
-  -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions"
-
-echo "Java version: $(java -version 2>&1 | head -n1)"
-echo "Memory: $MEMORY"
-echo "Starting server with CardBoard (Fabric + Bukkit Hybrid)..."
-
-java $JVM_ARGS -jar cardboard.jar nogui
-EOF
-
-chmod +x start_with_ai.sh
-echo "✅ prominence_2 설정 완료"
-```
-
-### **6단계: systemd 서비스 설정**
-
-```bash
-# AI 백엔드 서비스 등록
-sudo tee /etc/systemd/system/mc-ai-backend.service > /dev/null <<EOF
-[Unit]
-Description=Minecraft Modpack AI Backend
-After=network.target
-
-[Service]
-Type=simple
-User=namepix080
-WorkingDirectory=/home/namepix080/minecraft-ai-backend
-Environment=PATH=/home/namepix080/minecraft-ai-env/bin
-ExecStart=/home/namepix080/minecraft-ai-env/bin/python /home/namepix080/minecraft-ai-backend/app.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable mc-ai-backend
 sudo systemctl start mc-ai-backend
+sudo systemctl enable mc-ai-backend
 ```
 
-### **7단계: 관리 스크립트 설치**
+**설명**: 
+- `sudo systemctl start mc-ai-backend` : AI 백엔드 서비스 시작
+- `sudo systemctl enable mc-ai-backend` : 시스템 부팅 시 자동 시작되도록 설정
 
+**서비스 상태 확인:**
 ```bash
-# modpack_switch 스크립트 설치
-sudo cp ~/minecraft-modpack-ai/modpack_switch.sh /usr/local/bin/modpack_switch
-sudo chmod +x /usr/local/bin/modpack_switch
-
-# 모니터링 스크립트 설치
-sudo cp ~/minecraft-modpack-ai/monitor.sh /usr/local/bin/mc-ai-monitor
-sudo chmod +x /usr/local/bin/mc-ai-monitor
-```
-
-### **8단계: 방화벽 설정**
-
-```bash
-# UFW 설치 (Debian에서는 기본적으로 설치되어 있지 않을 수 있음)
-sudo apt install ufw -y
-
-# UFW 방화벽 규칙 설정
-sudo ufw allow 22/tcp      # SSH
-sudo ufw allow 25565/tcp   # Minecraft 기본 포트
-sudo ufw allow 5000/tcp    # AI 백엔드
-sudo ufw --force enable
-
-# 방화벽 상태 확인
-sudo ufw status
-```
-
-### **9단계: 설치 검증 및 테스트**
-
-#### **9.1 백엔드 서비스 상태 확인**
-
-```bash
-# 백엔드 서비스 상태 확인
 sudo systemctl status mc-ai-backend
-
-# 백엔드 API 테스트
-curl http://localhost:5000/health
 ```
 
-**예상 응답:**
-```json
-{
-  "status": "healthy",
-  "current_model": "gemini",
-  "available_models": {
-    "gemini": true,
-    "openai": false,
-    "claude": false
-  }
-}
-```
+### **7단계: 모드팩 분석 및 설정**
 
-#### **9.2 하나의 모드팩으로 테스트**
+**7.1 모드팩 파일 업로드**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# enigmatica_10으로 테스트 시작
-cd ~/enigmatica_10
-
-# 하이브리드 서버로 시작
-./start_with_ai.sh
-
-# 서버가 시작되면 게임 내에서 테스트:
-# /modpackai help
-# /ai 안녕하세요, 테스트입니다
-# /give @p book 1 (책을 들고 우클릭)
+# 모드팩 디렉토리 생성 (이미 생성되어 있을 수 있음)
+sudo mkdir -p /tmp/modpacks
+sudo chmod 755 /tmp/modpacks
 ```
+
+**모드팩 파일을 `/tmp/modpacks/` 디렉토리에 업로드하세요:**
+- **SCP 사용**: `scp your-modpack.zip username@server-ip:/tmp/modpacks/`
+- **SFTP 사용**: 파일을 `/tmp/modpacks/` 디렉토리에 업로드
+- **직접 복사**: USB나 다른 방법으로 파일을 서버에 복사
+
+**7.2 모드팩 분석 실행**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+# 방법 1: 설정 파일에서 모드팩 정보 읽어서 분석
+modpack_switch
+
+# 방법 2: 특정 모드팩 분석 (버전 자동 추출)
+modpack_switch CreateModpack
+
+# 방법 3: 특정 모드팩과 버전으로 분석
+modpack_switch FTBRevelation 1.0.0
+
+# 사용 가능한 모드팩 목록 확인
+modpack_switch --list
+```
+
+**설명**: 
+- **방법 1**: `.env` 파일의 `CURRENT_MODPACK_NAME`과 `CURRENT_MODPACK_VERSION`을 읽어서 분석
+- **방법 2**: 파일명에서 버전을 자동으로 추출 시도 (실패 시 기본값 1.0 사용)
+- **방법 3**: 사용자가 지정한 버전으로 분석
+
+**7.3 분석 결과 확인**
+**분석이 완료되면 다음과 같은 정보가 표시됩니다:**
+
+```
+📊 분석 결과:
+  🎮 모드팩: CreateModpack v1.0.0
+  📦 모드 수: 150
+  🛠️ 제작법 수: 2500
+  🎯 아이템 수: 3000
+  🌐 언어 매핑: 500개 추가
+```
+
+**설정 파일이 자동으로 업데이트되어 다음 분석부터는 `modpack_switch`만 입력하면 됩니다.**
 
 ---
 
-## 📁 설치 후 디렉토리 구조
+## 📁 설치 후 파일 구조
 
+### **현재 구조 (설치 전)**
 ```
 /home/namepix080/
-├── minecraft-modpack-ai/           # 프로젝트 소스
-├── minecraft-ai-backend/           # AI 백엔드 서비스
-│   ├── app.py                     # Flask 애플리케이션
-│   ├── middleware/                # 보안 및 모니터링
-│   ├── .env                       # API 키 설정
-│   └── logs/                      # 로그 파일들
-├── minecraft-ai-env/              # Python 가상환경
-├── enigmatica_10/                 # 모드팩 서버
-│   ├── plugins/                   # ← 새로 생성됨
-│   │   ├── ModpackAI-1.0.jar     # AI 플러그인
-│   │   └── ModpackAI/config.yml   # 플러그인 설정
-│   ├── arclight-neoforge-1.21.jar # ← 하이브리드 서버
-│   ├── start_with_ai.sh           # ← AI 지원 시작 스크립트
-│   └── start.sh                   # 기존 시작 스크립트
-├── enigmatica_6/
-│   ├── plugins/                   # ← 새로 생성됨
-│   ├── mohist-1.16.5.jar         # ← 하이브리드 서버
-│   └── start_with_ai.sh           # ← AI 지원 시작 스크립트
-└── [다른 모드팩들도 동일한 구조...]
+├── enigmatica_10/
+│   ├── start-server.sh (또는 다른 스크립트명)
+│   ├── mods/
+│   │   ├── AE2NetworkAnalyzer-1.21-2.1.0-neoforge.jar
+│   │   ├── AI-Improvements-1.21-0.5.3.jar
+│   │   └── ... (기존 모드들)
+│   ├── config/
+│   ├── world/
+│   └── ...
+├── integrated_MC/
+│   ├── start.sh (또는 다른 스크립트명)
+│   ├── mods/
+│   │   └── ... (기존 모드들)
+│   └── ...
+├── atm10/
+│   ├── [다른 스크립트명]
+│   ├── mods/
+│   │   └── ... (기존 모드들)
+│   └── ...
+├── beyond_depth/
+├── carpg/
+├── cteserver/
+├── prominence_2/
+├── mnm/
+└──test/
+```
+
+### **설치 후 구조**
+```
+/home/namepix080/
+├── enigmatica_10/
+│   ├── start.sh                    ← 통일된 스크립트명
+│   ├── mods/
+│   │   ├── AE2NetworkAnalyzer-1.21-2.1.0-neoforge.jar
+│   │   ├── AI-Improvements-1.21-0.5.3.jar
+│   │   └── ... (기존 모드들)
+│   ├── plugins/                    ← 새로 생성
+│   │   ├── ModpackAI-1.0.jar      ← AI 플러그인
+│   │   └── ModpackAI/             ← 플러그인 설정 폴더
+│   │       └── config.yml         ← AI 설정 파일
+│   ├── config/
+│   ├── world/
+│   └── ...
+├── integrated_MC/
+│   ├── start.sh                    ← 통일된 스크립트명
+│   ├── mods/
+│   │   └── ... (기존 모드들)
+│   ├── plugins/                    ← 새로 생성
+│   │   ├── ModpackAI-1.0.jar      ← AI 플러그인
+│   │   └── ModpackAI/             ← 플러그인 설정 폴더
+│   │       └── config.yml         ← AI 설정 파일
+│   └── ...
+├── atm10/
+│   ├── start.sh                    ← 통일된 스크립트명
+│   ├── mods/
+│   │   └── ... (기존 모드들)
+│   ├── plugins/                    ← 새로 생성
+│   │   ├── ModpackAI-1.0.jar      ← AI 플러그인
+│   │   └── ModpackAI/             ← 플러그인 설정 폴더
+│   │       └── config.yml         ← AI 설정 파일
+│   └── ...
+├── beyond_depth/
+├── carpg/
+├── cteserver/
+├── prominence_2/
+├── mnm/
+├── test/
+└── minecraft-ai-backend/           ← AI 백엔드 (공통)
+    ├── app.py
+    ├── models/
+    ├── database/
+    ├── .env
+    └── ...
 ```
 
 ---
 
-## 🎮 사용법
+## 🎮 게임 내 사용법
 
-### **1. AI 지원 서버 시작**
+### **기본 명령어**
+**게임 내에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 백엔드 상태 확인
+/modpackai help          # 도움말 보기
+/modpackai chat          # AI 채팅 GUI 열기
+/modpackai recipe <아이템> # 제작법 조회
+/modpackai models        # AI 모델 선택
+/modpackai current       # 현재 AI 모델 정보
+```
+
+### **AI 어시스턴트 아이템**
+- **아이템**: 네더스타 (Nether Star)
+- **획득 방법**: 게임 내에서 `/give @p nether_star 1` 명령어 입력
+- **사용법**: 아이템을 들고 우클릭
+
+### **GUI 구성**
+- **왼쪽**: 3x3 제작법 표시 영역
+- **오른쪽**: AI 채팅 영역
+- **하단**: AI 모델 선택 버튼
+
+---
+
+## 🔧 관리자 도구
+
+### **시스템 모니터링**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+# 시스템 상태 확인
+./monitor.sh
+
+# 백엔드 서비스 상태
 sudo systemctl status mc-ai-backend
 
-# 모드팩 서버 시작 (AI 지원)
-cd ~/enigmatica_10
-./start_with_ai.sh
+# 로그 확인
+sudo journalctl -u mc-ai-backend -f
 ```
 
-### **2. 게임 내 사용**
-
-```
-# 기본 명령어
-/modpackai help                    # 도움말 확인
-/modpackai chat                    # AI 채팅 GUI 열기
-/ai 철 블록은 어떻게 만들어?         # 바로 질문하기
-
-# AI 어시스턴트 아이템 획득
-/give @p book 1                    # 책 아이템 받기
-# 책을 들고 우클릭하면 AI 채팅창 열림
-
-# 제작법 조회
-/modpackai recipe diamond          # 다이아몬드 제작법
-/modpackai recipe "Applied Energistics 2 Controller"
-```
-
-### **3. 모드팩 전환**
+### **모드팩 변경**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 현재 모드팩 확인
-modpack_switch --current
-
-# 모드팩 전환
-modpack_switch enigmatica_6 1.11.0
-modpack_switch atm10 4.1.0
+# 모드팩 변경
+modpack_switch enigmatica_10 1.0.0
 
 # 사용 가능한 모드팩 목록
 modpack_switch --list
 ```
 
----
-
-## 🔧 관리 및 모니터링
-
-### **백엔드 서비스 관리**
+### **업데이트**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 서비스 상태 확인
-sudo systemctl status mc-ai-backend
-
-# 서비스 재시작
-sudo systemctl restart mc-ai-backend
-
-# 로그 확인
-sudo journalctl -u mc-ai-backend -f
-
-# 성능 모니터링
-mc-ai-monitor
-
-# API 상태 확인
-curl http://localhost:5000/health
-```
-
-### **각 모드팩 서버 관리**
-
-```bash
-# 서버 시작 (AI 지원)
-cd ~/enigmatica_10
-./start_with_ai.sh
-
-# 서버 시작 (기존 방식)
-./start.sh
-
-# 서버 상태 확인 (mcrcon 사용)
-cd ~/mcrcon
-./mcrcon -H localhost -P 25575 -p [rcon_password] "list"
-```
-
-### **로그 및 문제 해결**
-
-```bash
-# AI 백엔드 로그
-tail -f ~/minecraft-ai-backend/logs/app.log
-
-# 모드팩 서버 로그
-tail -f ~/enigmatica_10/logs/latest.log
-
-# 플러그인 로그 확인
-grep "ModpackAI" ~/enigmatica_10/logs/latest.log
-
-# 메모리 사용량 확인
-free -h
-htop
+# 시스템 업데이트
+./update.sh
 ```
 
 ---
 
 ## 🚨 문제 해결
 
-### **1. 플러그인이 로드되지 않는 경우**
+### **백엔드 서비스 오류**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 하이브리드 서버 JAR 파일 확인
-ls -la ~/enigmatica_10/*.jar
+# 서비스 재시작
+sudo systemctl restart mc-ai-backend
 
-# plugins 폴더 권한 확인
-ls -la ~/enigmatica_10/plugins/
+# 로그 확인
+sudo journalctl -u mc-ai-backend -f
 
-# 플러그인 파일 권한 수정
-chmod 644 ~/enigmatica_10/plugins/ModpackAI-1.0.jar
+# 포트 확인
+netstat -tlnp | grep 5000
+```
+
+### **플러그인 로드 오류**
+**터미널에서 다음 명령어를 입력하세요:**
+
+```bash
+# 플러그인 파일 확인
+ls -la ~/enigmatica_10/plugins/ModpackAI-1.0.jar
+
+# 권한 수정
+chmod 644 ~/*/plugins/ModpackAI-1.0.jar
 
 # Java 버전 확인
 java -version
 ```
 
-### **2. AI가 응답하지 않는 경우**
+### **API 키 오류**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 백엔드 서비스 상태
-sudo systemctl status mc-ai-backend
+# 환경 변수 확인
+grep API_KEY $HOME/minecraft-ai-backend/.env
 
-# API 연결 테스트
-curl -X POST http://localhost:5000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message":"테스트","player_uuid":"test","modpack_name":"test","modpack_version":"1.0"}'
-
-# API 키 확인
-grep API_KEY ~/minecraft-ai-backend/.env
-
-# 포트 사용 확인
-netstat -tlnp | grep 5000
+# 서비스 재시작
+sudo systemctl restart mc-ai-backend
 ```
 
-### **3. 메모리 부족 문제**
+### **스크립트 실행 오류**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 메모리 사용량 확인
-free -h
+# 실행 권한 확인
+ls -la ~/enigmatica_10/start.sh
 
-# JVM 힙 크기 조정 (start_with_ai.sh에서)
-# -Xmx8G를 -Xmx6G로 줄이기
-
-# swap 파일 생성 (필요시)
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
+# 권한 수정
+chmod +x ~/*/start.sh
 ```
 
-### **4. 방화벽 문제**
+### **RAG 시스템 오류**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# GCP 방화벽 규칙 확인
-gcloud compute firewall-rules list
+# GCP 설정 확인
+grep GCP $HOME/minecraft-ai-backend/.env
 
-# ufw 상태 확인
-sudo ufw status
+# GCP 프로젝트 연결 확인
+gcloud auth list
 
-# 포트 열기
-sudo ufw allow 25565/tcp  # Minecraft
-sudo ufw allow 5000/tcp   # AI Backend
+# GCS 버킷 접근 확인
+gsutil ls gs://your-bucket-name
+
+# RAG 서비스 상태 확인
+sudo journalctl -u mc-ai-backend | grep RAG
 ```
 
----
-
-## 📊 성능 최적화
-
-### **1. JVM 튜닝**
-
-각 모드팩의 `start_with_ai.sh`에서 메모리 설정 조정:
-
-```bash
-# 대용량 모드팩 (ATM10, Enigmatica 10)
--Xms8G -Xmx12G
-
-# 중간 크기 모드팩 (Enigmatica 6, Integrated MC)
--Xms6G -Xmx8G
-
-# 가벼운 모드팩 (Beyond Depth, MnM)
--Xms4G -Xmx6G
-```
-
-### **2. AI 백엔드 최적화**
-
-`~/.minecraft-ai-backend/.env` 파일에서:
-
-```env
-# 동시 요청 제한
-MAX_CONCURRENT_REQUESTS=5
-
-# 응답 캐싱 활성화
-ENABLE_CACHING=true
-CACHE_TTL=3600
-
-# 로그 레벨 조정 (운영 시)
-LOG_LEVEL=WARNING
-```
-
-### **3. 시스템 리소스 모니터링**
-
-```bash
-# 실시간 모니터링
-mc-ai-monitor --realtime
-
-# 리소스 사용량 알림 설정
-crontab -e
-# 추가: */5 * * * * /usr/local/bin/mc-ai-monitor --check-resources
-```
-
----
-
-## 🎯 체크리스트
-
-### **설치 전 준비**
-- [ ] GCP VM SSH 접속 확인
-- [ ] Google API 키 발급
-- [ ] 디스크 용량 확인 (최소 20GB 여유 공간)
-- [ ] 기존 모드팩 서버들이 정상 작동하는지 확인
-
-### **설치 과정**
-- [ ] 프로젝트 다운로드 완료
-- [ ] 자동 설치 스크립트 실행
-- [ ] API 키 설정 완료
-- [ ] 백엔드 서비스 시작 및 활성화
-- [ ] 각 모드팩에 하이브리드 서버 설치
-- [ ] 플러그인 설치 및 설정
-
-### **테스트**
-- [ ] 백엔드 API 응답 확인 (`curl http://localhost:5000/health`)
-- [ ] 하나의 모드팩 서버를 AI 지원으로 시작
-- [ ] 게임 내 `/modpackai help` 명령어 작동 확인
-- [ ] AI 채팅 기능 테스트
-- [ ] 제작법 조회 기능 테스트
-
-### **운영 준비**
-- [ ] systemd 서비스 자동 시작 설정
-- [ ] 로그 로테이션 설정
-- [ ] 정기적인 백업 스크립트 설정
-- [ ] 모니터링 및 알림 설정
+**일반적인 RAG 오류:**
+- **GCP_PROJECT_ID 누락**: Google Cloud Console에서 프로젝트 ID 확인
+- **GCS_BUCKET_NAME 누락**: Cloud Storage에서 버킷 생성
+- **권한 오류**: GCP 서비스 계정에 Storage 권한 부여
+- **네트워크 오류**: GCP API 활성화 확인
 
 ---
 
 ## 📞 지원
 
-### **문제 발생 시 확인 순서**
-1. **백엔드 서비스**: `sudo systemctl status mc-ai-backend`
-2. **API 키 설정**: `grep API_KEY ~/minecraft-ai-backend/.env`
-3. **네트워크 연결**: `curl http://localhost:5000/health`
-4. **플러그인 로딩**: 게임 서버 로그에서 "ModpackAI" 검색
-5. **메모리 사용량**: `free -h`
+### **문제 발생 시 확인사항**
+1. ✅ 백엔드 서비스가 정상 실행 중인지
+2. ✅ API 키가 올바르게 설정되었는지
+3. ✅ GCP 설정이 올바르게 되어 있는지
+4. ✅ GCS 버킷에 접근할 수 있는지
+5. ✅ 플러그인 파일이 올바른 위치에 있는지
+6. ✅ 시작 스크립트가 통일되었는지
+7. ✅ 방화벽 설정이 올바른지
 
-### **로그 수집**
+### **로그 확인**
+**터미널에서 다음 명령어를 입력하세요:**
 
 ```bash
-# 종합 진단 정보 수집
-cat > collect_logs.sh << 'EOF'
-#!/bin/bash
-echo "=== 시스템 정보 ===" > ~/ai_debug.log
-uname -a >> ~/ai_debug.log
-free -h >> ~/ai_debug.log
-df -h >> ~/ai_debug.log
+# 백엔드 로그
+sudo journalctl -u mc-ai-backend -f
 
-echo -e "\n=== 백엔드 상태 ===" >> ~/ai_debug.log
-sudo systemctl status mc-ai-backend >> ~/ai_debug.log 2>&1
+# RAG 관련 로그만 확인
+sudo journalctl -u mc-ai-backend | grep -i rag
 
-echo -e "\n=== 백엔드 로그 ===" >> ~/ai_debug.log
-sudo journalctl -u mc-ai-backend --since "1 hour ago" >> ~/ai_debug.log
+# 게임 서버 로그
+tail -f ~/enigmatica_10/logs/latest.log
+```
 
-echo -e "\n=== API 테스트 ===" >> ~/ai_debug.log
-curl -s http://localhost:5000/health >> ~/ai_debug.log 2>&1
+### **시스템 정보**
+**터미널에서 다음 명령어를 입력하세요:**
 
-echo -e "\n=== 환경 변수 ===" >> ~/ai_debug.log
-grep -E "API_KEY|PORT|DEBUG" ~/minecraft-ai-backend/.env >> ~/ai_debug.log
+```bash
+# 시스템 상태
+./monitor.sh
 
-echo "진단 정보가 ~/ai_debug.log에 저장되었습니다."
-EOF
+# 디스크 사용량
+df -h
 
-chmod +x collect_logs.sh
-./collect_logs.sh
+# 메모리 사용량
+free -h
 ```
 
 ---
 
-**🎮 GCP VM에서 AI 지원 모드팩 서버를 성공적으로 구축했습니다!** 🚀
+## 🎯 설치 체크리스트
 
-이제 모든 모드팩에서 AI 어시스턴트 기능을 사용하여 더욱 풍부한 게임 경험을 제공할 수 있습니다.
+### **사전 준비**
+- [ ] GCP VM Debian 환경
+- [ ] 마인크래프트 모드팩 서버 실행 중
+- [ ] API 키 준비 (OpenAI, Anthropic, Google)
+- [ ] GCP 프로젝트 ID 확인
+- [ ] GCS 버킷 생성 완료
+
+### **설치 과정**
+- [ ] 프로젝트 다운로드
+- [ ] 완전 자동 설치 실행 (또는 단계별 설치)
+- [ ] API 키 설정
+- [ ] GCP 설정 (프로젝트 ID, 버킷 이름)
+- [ ] 백엔드 서비스 시작
+- [ ] 모드팩 분석 완료
+
+### **테스트**
+- [ ] 게임 서버 시작
+- [ ] AI 명령어 테스트 (`/modpackai help`)
+- [ ] AI 채팅 테스트 (네더스타 아이템)
+- [ ] 제작법 조회 테스트
+
+---
+
+## 📝 중요 참고사항
+
+### **스크립트 파일 생성 방법**
+1. **터미널에서 `nano 파일명.sh` 입력**
+2. **편집기에서 코드 복사-붙여넣기**
+3. **Ctrl+X, Y, Enter로 저장**
+4. **`chmod +x 파일명.sh`로 실행 권한 부여**
+5. **`./파일명.sh`로 스크립트 실행**
+
+### **API 키 설정 방법**
+
+**🌟 우선순위: Gemini Pro (메인 모델)**
+1. **Google AI Studio (ai.google.dev)에서 API 키 생성** ⭐ 최우선 설정
+2. **GCP VM과 동일한 Google 계정 사용 (무료 크레딧 활용)**
+
+**📖 백업 모델들 (선택사항)**
+3. **OpenAI (platform.openai.com)** - 무료 티어 사용
+4. **Anthropic (console.anthropic.com)** - 무료 티어 사용
+
+**설정 방법:**
+1. **`nano $HOME/minecraft-ai-backend/.env`로 파일 열기**
+2. **실제 API 키로 교체 (특히 GOOGLE_API_KEY는 필수)**
+3. **Ctrl+X, Y, Enter로 저장**
+
+**💡 참고**: Gemini Pro가 기본 모델이므로 GOOGLE_API_KEY만 설정해도 기본 동작합니다!
+
+### **파일 편집기 사용법**
+- **nano**: 간단한 텍스트 편집기
+- **Ctrl+X**: 저장 및 종료
+- **Y**: 변경사항 저장 확인
+- **Enter**: 파일명 확인
+
+---
+
+**🎮 AI 모드가 성공적으로 추가되었습니다!** 🚀
+
+이제 게임 내에서 AI 어시스턴트와 함께 즐거운 모드팩 플레이를 즐기세요! 
