@@ -1,0 +1,35 @@
+# ModpackAI NeoForge 모드 메타데이터
+
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="modpackai"
+version="${file.jarVersion}"
+displayName="Modpack AI Assistant"
+description='''
+마인크래프트 모드팩 전문 AI 어시스턴트. 
+모드팩 관련 질문에 답변하고 제작법을 제공합니다.
+Google Gemini 2.5 Pro 기반 웹검색 지원.
+'''
+logoFile="logo.png"
+authors="ModpackAI Team"
+credits="Google Gemini, OpenAI, Anthropic"
+
+displayURL="https://github.com/namepix/minecraft-modpack-ai"
+updateJSONURL="https://github.com/namepix/minecraft-modpack-ai/releases"
+
+[[dependencies.modpackai]]
+modId="neoforge"
+mandatory=true
+versionRange="[21.1.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.modpackai]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.21.1,1.22)"
+ordering="NONE"
+side="BOTH"

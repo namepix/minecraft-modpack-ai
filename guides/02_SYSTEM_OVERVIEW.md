@@ -3,30 +3,30 @@
 ## 📋 개요
 
 마인크래프트 모드팩 AI 시스템은 Gemini 2.5 Pro 웹검색 기반의 간소화된 아키텍처로 설계되었습니다.
-이 가이드는 전체 시스템의 구조와 각 컴포넌트의 역할을 설명합니다.
+**NeoForge 모드 방식**으로 구현되어 안정성과 호환성이 크게 향상되었습니다.
 
 ## 🏗️ 시스템 아키텍처
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    마인크래프트 모드팩 AI 시스템                     │
+│                  마인크래프트 모드팩 AI 시스템 (모드 방식)              │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────┐    HTTP API    ┌─────────────────┐
 │   Minecraft     │ ◄────────────► │   AI Backend    │
-│   Plugin        │                │   (Flask)       │
+│   NeoForge Mod  │                │   (Flask)       │
 │                 │                │                 │
 │  - AI 명령어     │                │  - Gemini 2.5   │
-│  - GUI 시스템    │                │    Pro (메인)    │
-│  - 이벤트 리스너  │                │  - 웹검색 지원   │
+│  - Screen GUI    │                │    Pro (메인)    │
+│  - 이벤트 핸들러  │                │  - 웹검색 지원   │
 │  - 채팅 관리     │                │  - 미들웨어      │
 └─────────────────┘                └─────────────────┘
          │                                   │
          │                                   │
          ▼                                   ▼
 ┌─────────────────┐                ┌─────────────────┐
-│   Minecraft     │                │  Google Search  │
-│   Server        │                │   & AI APIs     │
+│   NeoForge      │                │  Google Search  │
+│   Modpack Server│                │   & AI APIs     │
 │                 │                │                 │
 │  - 모드팩 운영   │                │  - 실시간 검색   │
 │  - 플레이어 관리 │                │  - OpenAI 백업   │
@@ -36,35 +36,37 @@
 
 ## 🎯 주요 컴포넌트
 
-### 1. 📦 Minecraft 플러그인 (Java)
+### 1. 📦 NeoForge 모드 (Java)
 
-**위치**: `minecraft_plugin/src/main/java/com/modpackai/`
+**위치**: `minecraft_mod/src/main/java/com/modpackai/`
 
 **주요 클래스**:
 ```
 com.modpackai/
-├── ModpackAIPlugin.java          # 메인 플러그인 클래스
+├── ModpackAIMod.java                    # 메인 모드 클래스
 ├── commands/
-│   ├── AICommand.java            # /ai 명령어 처리
-│   └── ModpackAICommand.java     # /modpackai 명령어 처리
+│   └── ModpackAICommands.java          # /ai, /modpackai 명령어 처리
+├── events/
+│   └── PlayerInteractionHandler.java    # 플레이어 상호작용 이벤트
 ├── gui/
-│   ├── AIChatGUI.java           # AI 채팅 GUI
-│   ├── ModelSelectionGUI.java   # 모델 선택 GUI
-│   └── RecipeGUI.java           # 제작법 GUI
-├── listeners/
-│   ├── InventoryListener.java   # 인벤토리 이벤트
-│   └── PlayerInteractListener.java # 플레이어 상호작용
+│   └── AIChatScreen.java               # AI 채팅 Screen GUI
 └── managers/
-    ├── AIManager.java           # AI API 통신 관리
-    ├── ConfigManager.java       # 설정 관리
-    └── RecipeManager.java       # 제작법 관리
+    ├── ModpackAIConfig.java            # 설정 관리 (JSON)
+    └── ModpackAIManager.java           # AI API 통신 관리
 ```
 
 **주요 기능**:
-- ✅ AI 어시스턴트 명령어 처리
-- ✅ GUI 기반 채팅 시스템
-- ✅ 플레이어 상호작용 감지
-- ✅ HTTP API 통신
+- ✅ AI 어시스턴트 명령어 처리 (Brigadier 기반)
+- ✅ Screen API 기반 채팅 시스템
+- ✅ 플레이어 상호작용 감지 (@SubscribeEvent)
+- ✅ HTTP API 통신 (Java 11+ HttpClient)
+
+**플러그인과의 차이점**:
+- **명령어 시스템**: CommandExecutor → Brigadier Commands
+- **GUI 시스템**: Inventory GUI → Screen API
+- **이벤트 처리**: @EventHandler → @SubscribeEvent
+- **설정 관리**: YML → JSON
+- **초기화**: onEnable() → @Mod + FMLCommonSetupEvent
 
 ### 2. 🚀 AI 백엔드 (Python Flask)
 
@@ -91,24 +93,23 @@ backend/
 
 ### 3. ⚙️ 설정 시스템
 
-**메인 설정**: `config/config.yaml`
-```yaml
-ai:
-  primary_provider: "google"     # Gemini 2.5 Pro
-  primary_model: "gemini-2.5-pro"
-  web_search_enabled: true
-  max_tokens: 1000
-  temperature: 0.7
-
-server:
-  host: "0.0.0.0"
-  port: 5000
-  debug: false
-
-minecraft_plugin:
-  ai_item:
-    material: "BOOK"
-    name: "§6§l모드팩 AI 어시스턴트"
+**모드 설정**: `config/modpackai-config.json`
+```json
+{
+  "backend": {
+    "url": "http://localhost:5000",
+    "timeout": 10000
+  },
+  "ai_item": {
+    "material": "NETHER_STAR",
+    "name": "§6§l모드팩 AI 어시스턴트",
+    "lore": "§7우클릭으로 AI 채팅창을 열 수 있습니다"
+  },
+  "ai": {
+    "primary_model": "gemini",
+    "web_search_enabled": true
+  }
+}
 ```
 
 **환경 변수**: `.env`
@@ -125,11 +126,11 @@ DEBUG=false
 ### 1. 플레이어 질문 플로우
 ```
 1. 플레이어가 `/ai 질문` 또는 GUI에서 메시지 입력
-2. Minecraft 플러그인이 질문을 받음
+2. NeoForge 모드가 질문을 받음
 3. HTTP POST /chat로 백엔드에 요청
 4. 백엔드가 Gemini 2.5 Pro에 웹검색과 함께 질의
-5. AI 응답을 플러그인으로 반환
-6. 플러그인이 플레이어에게 응답 표시
+5. AI 응답을 모드로 반환
+6. 모드가 플레이어에게 응답 표시
 ```
 
 ### 2. 제작법 조회 플로우
@@ -138,7 +139,15 @@ DEBUG=false
 2. HTTP GET /recipe/<item_name>로 요청
 3. 백엔드가 웹검색을 통해 최신 제작법 정보 검색
 4. 구조화된 제작법 데이터 반환
-5. GUI에 3x3 그리드로 제작법 표시
+5. 채팅 또는 GUI에 제작법 표시
+```
+
+### 3. AI 아이템 상호작용 플로우
+```
+1. 플레이어가 AI 아이템(네더 스타) 우클릭
+2. PlayerInteractionHandler에서 이벤트 감지
+3. 클라이언트 측: AIChatScreen 열기
+4. 서버 측: 안내 메시지 전송
 ```
 
 ## 🛡️ 보안 아키텍처
@@ -166,19 +175,19 @@ DEBUG=false
 
 ### 1. 스크립트 파일들
 ```bash
-install.sh          # 자동 설치 스크립트
-monitor.sh          # 시스템 모니터링
-update.sh           # 업데이트 스크립트
-deploy.sh           # 배포 스크립트
-emergency.sh        # 응급 복구 스크립트
-modpack_switch.sh   # 모드팩 변경 스크립트
+install_mod.sh          # 모드 자동 설치 스크립트
+monitor.sh              # 시스템 모니터링
+update.sh               # 업데이트 스크립트
+deploy.sh               # 배포 스크립트
+emergency.sh            # 응급 복구 스크립트
+modpack_switch.sh       # 모드팩 변경 스크립트
 ```
 
 ### 2. 테스트 시스템
 ```bash
-test_local.sh       # 로컬 테스트
-test_remote.sh      # 원격 테스트
-test_runner.py      # Python 테스트 실행기
+test_local.sh           # 로컬 테스트
+test_remote.sh          # 원격 테스트
+test_runner.py          # Python 테스트 실행기
 ```
 
 ## 📊 API 엔드포인트
@@ -236,6 +245,20 @@ POST /chat
 - 에러율 추적
 - 사용자 활동 분석
 
+## 🔄 플러그인 vs 모드 비교
+
+| 측면 | 플러그인 (기존) | 모드 (현재) |
+|------|------|------|
+| **서버 요구사항** | 하이브리드 서버 필요 | 순수 NeoForge 서버 |
+| **안정성** | ❌ 오류 많음 | ✅ 안정적 |
+| **설치 복잡도** | 복잡 (하이브리드 서버) | 간단 (모드만 설치) |
+| **명령어 시스템** | CommandExecutor | Brigadier (더 강력) |
+| **GUI 시스템** | Inventory 기반 | Screen 기반 (더 유연) |
+| **설정 관리** | YML | JSON (더 구조화) |
+| **이벤트 처리** | @EventHandler | @SubscribeEvent |
+| **빌드 시스템** | Maven | Gradle |
+| **사용자 경험** | 동일 | 동일 (향상됨) |
+
 ## 🔮 확장 가능성
 
 ### 1. 추가 AI 모델 지원
@@ -257,4 +280,4 @@ POST /chat
 
 ---
 
-**🎮 이 간소화된 아키텍처는 빠른 개발과 쉬운 유지보수를 목표로 설계되었습니다!** 🚀
+**🎮 이 모드 기반 아키텍처는 하이브리드 서버의 문제점을 해결하고 더 안정적인 AI 경험을 제공합니다!** 🚀

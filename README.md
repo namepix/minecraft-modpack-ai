@@ -1,57 +1,57 @@
-# 🎮 마인크래프트 모드팩 AI 시스템
+# 🎮 마인크래프트 모드팩 AI 시스템 (NeoForge 모드)
 
-마인크래프트 모드팩 전문 AI 어시스턴트로, 게임 내에서 모드팩 관련 질문에 답변하고 제작법을 제공합니다.
+**NeoForge 모드**로 구현된 마인크래프트 모드팩 전문 AI 어시스턴트입니다. 게임 내에서 모드팩 관련 질문에 답변하고 제작법을 제공합니다.
 
 ## ✨ 주요 기능
 
 - 🤖 **Gemini 2.5 Pro 중심**: 웹검색 지원으로 최신 모드 정보 실시간 제공
 - 🌐 **실시간 웹검색**: Google 검색을 통한 최신 모드 업데이트 및 정보 확인
 - 🎯 **모드팩 전문 지식**: 특정 모드팩에 대한 정확한 정보 제공
-- 🛠️ **3x3 제작법 GUI**: 시각적으로 명확한 제작법 표시
-- 💬 **메모리 기반 채팅**: 플레이어별 대화 기록 (메모리 저장)
+- 🛠️ **NeoForge 네이티브**: 순수 NeoForge 모드로 구현되어 안정성 극대화
+- 💬 **Screen 기반 GUI**: 더 유연하고 강력한 AI 채팅 인터페이스
 - 🌐 **한글/영어 호환**: 아이템명과 질문 모두 한글/영어 사용 가능
 - 🔄 **간편한 배포**: 자동화된 GCP VM 배포 및 업데이트 시스템
 - 🛡️ **보안 및 모니터링**: 내장된 보안 미들웨어와 성능 모니터링
 
-## 🏗️ 시스템 아키텍처 (간소화 버전)
+## 🏗️ 시스템 아키텍처 (모드 기반)
 
 ```
 ┌─────────────────┐    HTTP API    ┌─────────────────┐
 │   Minecraft     │ ◄────────────► │   AI Backend    │
-│   Plugin        │                │   (Flask)       │
+│   NeoForge Mod  │                │   (Flask)       │
 │                 │                │                 │
-│  - GUI System   │                │  - Gemini 2.5   │
-│  - Commands     │                │    Pro (메인)    │
-│  - Item Events  │                │  - 보안 미들웨어  │
-│  - Chat History │                │  - 모니터링      │
+│  - Screen GUI    │                │  - Gemini 2.5   │
+│  - Commands      │                │    Pro (메인)    │
+│  - Event Handler │                │  - 보안 미들웨어  │
+│  - Config (JSON) │                │  - 모니터링      │
 └─────────────────┘                └─────────────────┘
          │                                   │
          │                                   │
          ▼                                   ▼
 ┌─────────────────┐                ┌─────────────────┐
-│   Minecraft     │                │  Google Search  │
-│   Server        │                │   (웹검색)        │
+│   NeoForge      │                │  Google Search  │
+│   Modpack Server│                │   (웹검색)        │
 │                 │                │                 │
 │  - Modpack      │                │  - 실시간 정보   │
 │  - Players      │                │  - 모드 업데이트 │
-│  - Plugin JAR   │                │  - 최신 데이터   │
+│  - Mod JAR      │                │  - 최신 데이터   │
 └─────────────────┘                └─────────────────┘
 ```
 
 ## 🚀 빠른 시작
 
-### 1. 설치
+### 1. 설치 (NeoForge 모드 방식)
 ```bash
 git clone https://github.com/your-username/minecraft-modpack-ai.git
 cd minecraft-modpack-ai
-chmod +x install.sh
-./install.sh
+chmod +x install_mod.sh
+./install_mod.sh
 ```
 
 ### 2. API 키 설정 (Gemini Pro 우선)
 ```bash
 nano $HOME/minecraft-ai-backend/.env
-# 🌟 GOOGLE_API_KEY=your-key (필수, GCP 크레딧 사용)
+# 🌟 GOOGLE_API_KEY=your-key (필수, 웹검색 지원)
 # 📖 OPENAI_API_KEY=your-key (선택, 백업용)
 # 📖 ANTHROPIC_API_KEY=your-key (선택, 백업용)
 ```
@@ -62,15 +62,22 @@ sudo systemctl start mc-ai-backend
 sudo systemctl enable mc-ai-backend
 ```
 
-### 4. 게임 내 사용
-```
-/ai 철 블록은 어떻게 만들어?    # AI에게 바로 질문
-/modpackai chat                 # AI GUI 열기
-/modpackai recipe 다이아몬드     # 제작법 조회
-/modpackai models               # AI 모델 선택
+### 4. 모드 설치 확인
+```bash
+# 각 모드팩의 mods 폴더에 모드 파일 확인
+ls ~/*/mods/modpackai-*.jar
 ```
 
-### 5. API 엔드포인트
+### 5. 게임 내 사용
+```
+/ai 철 블록은 어떻게 만들어?    # AI에게 바로 질문
+/ai                           # AI GUI 열기 (클라이언트)
+/modpackai give               # AI 아이템 받기
+/modpackai recipe 다이아몬드   # 제작법 조회
+/modpackai help               # 도움말 보기
+```
+
+### 6. API 엔드포인트
 ```
 GET  /health                    # 서버 상태 확인
 POST /chat                      # AI 채팅
@@ -79,140 +86,74 @@ POST /models/switch             # AI 모델 전환
 GET  /recipe/<item_name>        # 아이템 제작법 조회
 ```
 
-**💡 팁**: AI 어시스턴트 책 아이템을 우클릭하면 바로 채팅창이 열립니다!
+**💡 팁**: AI 어시스턴트 아이템(네더 스타)을 우클릭하면 바로 채팅창이 열립니다!
 
 ## 📚 상세 가이드
 
-### 📖 [가이드 모음](guides/)
-- [관리자를 위한 AI 모드 추가 가이드](guides/01_ADMIN_SETUP.md)
-- [시스템 전체 구조 가이드](guides/02_SYSTEM_OVERVIEW.md)
-- [게임 내 AI 모드 명령어 사용법](guides/03_GAME_COMMANDS.md)
-- [관리자를 위한 모드팩 변경 가이드](guides/04_MODPACK_SWITCH.md)
+- [관리자 설정 가이드](guides/01_ADMIN_SETUP.md)
+- [시스템 개요](guides/02_SYSTEM_OVERVIEW.md)
+- [게임 내 명령어](guides/03_GAME_COMMANDS.md)
+- [모드팩 전환](guides/04_MODPACK_SWITCH.md)
+- [개발자 가이드](guides/05_DEVELOPMENT.md)
 
-## 🎮 게임 내 명령어
+## 🔄 버전 선택 가이드
 
-| 명령어 | 설명 | 권한 | 예시 |
-|--------|------|------|------|
-| `/ai <질문>` | AI에게 바로 질문 | 일반 | `/ai 철 블록 만드는 법` |
-| `/modpackai chat` | AI 채팅 GUI 열기 | 일반 | `/modpackai chat` |
-| `/modpackai recipe <아이템>` | 제작법 조회 | 일반 | `/modpackai recipe 다이아몬드` |
-| `/modpackai models` | AI 모델 선택 | 일반 | `/modpackai models` |
-| `/modpackai current` | 현재 AI 모델 정보 | 일반 | `/modpackai current` |
-| `/modpackai switch <모드팩>` | 모드팩 변경 | 관리자 | `/modpackai switch FTB` |
-| `/modpackai help` | 도움말 보기 | 일반 | `/modpackai help` |
+### 🎯 NeoForge 모드 버전 (현재 - 권장)
+- ✅ **NeoForge 서버에서 바로 작동**
+- ✅ **하이브리드 서버 불필요**
+- ✅ **더 안정적이고 호환성 좋음**
+- ✅ **Screen API 기반 현대적 GUI**
 
-## 🤖 지원하는 AI 모델
+### 🔌 Bukkit 플러그인 버전 (legacy)
+- ⚠️ **하이브리드 서버 필요** (Arclight, Mohist, CardBoard)
+- ⚠️ **설치가 복잡함**
+- 📦 [플러그인 버전 다운로드](https://github.com/your-username/minecraft-modpack-ai/tree/plugin-version)
 
-| 모델 | 제공업체 | 특징 | 비용 |
-|------|----------|------|------|
-| GPT-3.5 Turbo | OpenAI | 빠르고 저렴 | 유료 |
-| GPT-4 | OpenAI | 정확도 높음 | 유료 |
-| Claude 3 Haiku | Anthropic | 빠르고 효율적 | 유료 |
-| Claude 3 Sonnet | Anthropic | 균형잡힌 성능 | 유료 |
-| Gemini 2.5 Pro | Google | 웹검색 지원, 무료 크레딧 제공 | 무료 |
+## 🛠️ 개발 환경
 
-## 🔧 관리자 도구
+### 요구사항
+- **Java**: OpenJDK 17+
+- **Python**: 3.9+
+- **Minecraft**: 1.21.1 (NeoForge)
+- **Gradle**: 8.0+
 
-### CLI 모드팩 변경 스크립트
+### 빌드
 ```bash
-# 설정 파일에서 모드팩 정보 읽어서 분석
-modpack_switch
+# 모드 빌드
+cd minecraft_mod
+./gradlew build
 
-# 특정 모드팩 분석 (버전 자동 추출)
-modpack_switch CreateModpack
-
-# 특정 모드팩과 버전으로 분석
-modpack_switch FTBRevelation 1.0.0
-
-# 사용 가능한 모드팩 목록
-modpack_switch --list
-
-# 도움말
-modpack_switch --help
+# 백엔드 테스트
+cd backend
+python -m pytest
 ```
 
-### 시스템 모니터링
-```bash
-# 시스템 상태 확인
-mc-ai-monitor
+## 📊 성능 지표
 
-# 상세 로그 확인
-mc-ai-monitor --log
-```
+- **AI 응답 시간**: 1-3초 (Gemini 2.5 Pro)
+- **웹검색 지원**: 실시간 Google 검색
+- **메모리 사용량**: 최적화된 단일 앱 구조
+- **서버 호환성**: 모든 NeoForge 서버 지원
 
-## 📊 시스템 요구사항
+## 🤝 기여하기
 
-- **OS**: Debian 11+ 또는 Ubuntu 20.04+
-- **CPU**: 2 vCPU 이상 (권장: 4 vCPU)
-- **RAM**: 4GB 이상 (권장: 8GB)
-- **Storage**: 20GB 이상 (SSD 권장)
-- **Python**: 3.8+
-- **Java**: 11+
-
-## 🔒 보안 기능
-
-- **Rate Limiting**: API 요청 제한
-- **Input Validation**: 입력 데이터 검증
-- **XSS Prevention**: 크로스 사이트 스크립팅 방지
-- **UUID 기반 인증**: 플레이어 식별
-
-## 🚨 문제 해결
-
-### 백엔드 서비스 오류
-```bash
-# 서비스 상태 확인
-sudo systemctl status mc-ai-backend
-
-# 로그 확인
-sudo journalctl -u mc-ai-backend -f
-
-# 서비스 재시작
-sudo systemctl restart mc-ai-backend
-```
-
-### 플러그인 로드 오류
-```bash
-# 플러그인 파일 확인
-ls -la ~/enigmatica_10/plugins/ModpackAI-1.0.jar
-ls -la ~/integrated_MC/plugins/ModpackAI-1.0.jar
-
-# Java 버전 확인
-java -version
-```
-
-### API 키 오류
-```bash
-# 환경 변수 확인
-grep API_KEY $HOME/minecraft-ai-backend/.env
-```
-
-## 📈 성능 지표
-
-- **응답 시간**: 1-6초 (모델에 따라)
-- **정확도**: 80-95% (모델에 따라)
-- **동시 사용자**: 권장 5-8명, 최대 10-15명
-- **제작법 정보**: 95%+ 정확도
-
-## 🔮 향후 개발 계획
-
-- [ ] 더 많은 AI 모델 지원
-- [ ] 음성 인식 기능 추가
-- [ ] 모바일 앱 개발
-- [ ] 실시간 번역 기능
-- [ ] 클라우드 네이티브 아키텍처
-
-## 📞 지원
-
-문제가 발생하면 다음을 확인하세요:
-1. [가이드 모음](guides/) 참조
-2. 시스템 로그 확인
-3. API 키 설정 확인
-4. 네트워크 연결 상태 확인
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
+## 🔗 링크
+
+- [GitHub 저장소](https://github.com/your-username/minecraft-modpack-ai)
+- [플러그인 버전](https://github.com/your-username/minecraft-modpack-ai/tree/plugin-version)
+- [이슈 리포트](https://github.com/your-username/minecraft-modpack-ai/issues)
+- [릴리스](https://github.com/your-username/minecraft-modpack-ai/releases)
 
 ---
 
-**🎮 즐거운 모드팩 플레이 되세요!** 🚀 
+**⭐ 이 프로젝트가 도움이 되었다면 스타를 눌러주세요!**

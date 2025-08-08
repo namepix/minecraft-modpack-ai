@@ -2,7 +2,28 @@
   "permissions": {
     "allow": [
       "Bash(find:*)",
-      "WebFetch(domain:mohistmc.com)"
+      "WebFetch(domain:mohistmc.com)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(python -m pip:*)",
+      "Bash(claude --version)",
+      "Bash(python:*)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(dir:*)",
+      "Bash(superclaude --diagnose)",
+      "Bash(superclaude --version)",
+      "Bash(claude mcp:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(timeout:*)",
+      "Bash(claude --print \"/mcp\")",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(claude:*)",
+      "Bash(npx:*)",
+      "Bash(true)",
+      "Bash(cmd /c \"npx -y @21st-dev/magic@latest --help\")",
+      "Bash(./gradlew:*)",
+      "Bash(gradle build)",
+      "Bash(java:*)"
     ],
     "deny": []
   }
