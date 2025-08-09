@@ -13,6 +13,7 @@ NC='\033[0m' # No Color
 # 설정 파일 경로
 CONFIG_FILE="$HOME/minecraft-ai-backend/.env"
 MODPACKS_DIR="/tmp/modpacks"
+EXTRACT_BASE="/tmp/modpack_extracts"
 BACKEND_URL="http://localhost:5000"
 
 # 로그 함수
@@ -109,26 +110,31 @@ check_backend() {
 list_modpacks() {
     log_info "사용 가능한 모드팩 목록:"
     echo ""
-    
-    if [ ! -d "$MODPACKS_DIR" ]; then
-        log_error "모드팩 디렉토리가 존재하지 않습니다: $MODPACKS_DIR"
-        log_info "디렉토리를 생성하세요: sudo mkdir -p $MODPACKS_DIR"
-        return 1
-    fi
-    
+
     local found=false
-    for file in "$MODPACKS_DIR"/*.zip "$MODPACKS_DIR"/*.jar; do
-        if [ -f "$file" ]; then
+
+    # 1) 업로드된 아카이브 파일들
+    if [ -d "$MODPACKS_DIR" ]; then
+        for file in "$MODPACKS_DIR"/*.zip "$MODPACKS_DIR"/*.jar; do
+            [ -f "$file" ] || continue
             local filename=$(basename "$file")
             local size=$(du -h "$file" | cut -f1)
             echo "  📦 $filename ($size)"
             found=true
+        done
+    fi
+
+    # 2) 홈 디렉토리의 실제 서버 디렉토리(최상위)도 함께 표시
+    for d in "$HOME"/*; do
+        [ -d "$d" ] || continue
+        if [ -d "$d/mods" ]; then
+            echo "  📁 $(basename "$d") (directory)"
+            found=true
         fi
     done
-    
-    if [ "$found" = false ]; then
-        log_warning "모드팩 파일을 찾을 수 없습니다: $MODPACKS_DIR"
-        log_info "모드팩 파일을 업로드하세요: $MODPACKS_DIR"
+
+    if [ "$found" != true ]; then
+        log_warning "모드팩 파일/디렉토리를 찾지 못했습니다. $MODPACKS_DIR 또는 $HOME/* 확인"
     fi
 }
 
@@ -247,8 +253,37 @@ find_modpack_file() {
             fi
         done
     fi
+
+    # 홈 디렉토리의 실제 서버 디렉토리도 허용
+    if [ -d "$HOME/$modpack_name" ] && [ -d "$HOME/$modpack_name/mods" ]; then
+        echo "$HOME/$modpack_name"
+        return 0
+    fi
     
     return 1
+}
+
+# 아카이브면 임시 해제 후 디렉토리 경로 반환
+extract_if_archive() {
+    local archive_path="$1"
+    local out_dir="$EXTRACT_BASE/$(basename "$archive_path")_$$"
+    mkdir -p "$out_dir"
+    if [[ "$archive_path" == *.zip ]]; then
+        unzip -q "$archive_path" -d "$out_dir" || return 1
+    elif [[ "$archive_path" == *.jar ]]; then
+        mkdir -p "$out_dir/jar"
+        (cd "$out_dir/jar" && jar xf "$archive_path") || return 1
+        out_dir="$out_dir/jar"
+    else
+        return 2
+    fi
+    # 단일 하위 디렉토리만 있으면 그 디렉토리 채택
+    local subdirs=("$out_dir"/*)
+    if [ ${#subdirs[@]} -eq 1 ] && [ -d "${subdirs[0]}" ]; then
+        echo "${subdirs[0]}"
+    else
+        echo "$out_dir"
+    fi
 }
 
 # 모드팩 분석 실행
@@ -263,35 +298,41 @@ analyze_modpack() {
         return 1
     fi
     
-    # 2. 모드팩 파일 찾기
-    log_info "모드팩 파일 검색 중..."
-    local modpack_file
-    if modpack_file=$(find_modpack_file "$modpack_name" "$version"); then
-        log_success "모드팩 파일 발견: $modpack_file"
+    # 2. 입력 소스(아카이브 or 디렉토리) 찾기
+    log_info "모드팩 입력 소스 검색 중..."
+    local source_path
+    if source_path=$(find_modpack_file "$modpack_name" "$version"); then
+        log_success "입력 소스 발견: $source_path"
     else
-        log_error "모드팩 파일을 찾을 수 없습니다: $modpack_name v$version"
+        log_error "모드팩 입력 소스를 찾을 수 없습니다: $modpack_name v$version"
         log_info "사용 가능한 모드팩 목록을 확인하세요: $0 --list"
         return 1
     fi
     
-    # 3. 파일 크기 및 권한 확인
-    local file_size=$(du -h "$modpack_file" | cut -f1)
-    log_info "파일 크기: $file_size"
-    
-    if [ ! -r "$modpack_file" ]; then
-        log_error "파일을 읽을 수 없습니다: $modpack_file"
-        log_info "권한을 수정하세요: sudo chmod 644 $modpack_file"
+    # 3. 디렉토리 결정: 아카이브면 임시 해제
+    local effective_dir=""
+    if [ -f "$source_path" ]; then
+        log_info "아카이브 감지, 임시 해제 진행..."
+        effective_dir=$(extract_if_archive "$source_path") || {
+            log_error "아카이브 해제 실패: $source_path"
+            return 1
+        }
+        log_success "해제 완료: $effective_dir"
+    elif [ -d "$source_path" ]; then
+        effective_dir="$source_path"
+    else
+        log_error "유효하지 않은 입력: $source_path"
         return 1
     fi
-    
-    # 4. 백엔드 API 호출
+
+    # 4. 백엔드 API 호출(디렉토리 경로 전달)
     log_info "백엔드에 모드팩 분석 요청 중..."
     
     local response
     response=$(curl -s -X POST "$BACKEND_URL/api/modpack/switch" \
         -H "Content-Type: application/json" \
         -d "{
-            \"modpack_path\": \"$modpack_file\",
+            \"modpack_path\": \"$effective_dir\",
             \"modpack_name\": \"$modpack_name\",
             \"modpack_version\": \"$version\"
         }")

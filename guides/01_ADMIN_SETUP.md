@@ -19,7 +19,7 @@
 - ✅ GCP VM Debian 서버에 SSH 접속 가능
 - ✅ **NeoForge 모드팩 서버**가 이미 설치되어 있음 (하이브리드 서버 불필요!)
 - ✅ API 키 준비 (Google Gemini 권장, OpenAI/Anthropic 선택)
-- ✅ Java 17+ 설치 확인
+- ✅ Java 21+ 설치 확인
 - ✅ Python 3.9+ 설치 확인
 
 ### **1단계: 프로젝트 다운로드**
@@ -134,141 +134,78 @@ curl http://localhost:5000/health
 
 ---
 
-## 🔧 방법 2: 단계별 설치
+## 🔧 방법 2: 단계별 설치 (수정됨)
 
-### **1단계: AI 백엔드 설치**
+#### 1단계: 기본 도구 및 Java 21 설치
 ```bash
-cd ~/minecraft-modpack-ai/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# 시스템 패키지 업데이트 및 필수 도구 설치
+sudo apt-get update
+sudo apt-get install -y git curl wget
+
+# Java 21 (Temurin) 설치
+sudo apt-get install -y temurin-21-jdk
 ```
 
-### **2단계: NeoForge 모드 빌드**
-
-1) 프로젝트 경로로 이동
+#### 2단계: 프로젝트 클론
 ```bash
-cd ~/minecraft-modpack-ai/minecraft_mod
+# GitHub에서 프로젝트 클론
+git clone https://github.com/namepix/minecraft-modpack-ai.git
+cd minecraft-modpack-ai
 ```
 
-2) 플러그인 저장소 설정(settings.gradle/ settings.gradle.kts)
-- Groovy DSL(`settings.gradle`) 사용 시 다음 블록을 포함해야 합니다:
-```groovy
-pluginManagement {
-  repositories {
-    maven { url 'https://maven.neoforged.net/releases' }
-    gradlePluginPortal()
-    mavenCentral()
-  }
-}
-dependencyResolutionManagement {
-  repositories {
-    maven { url 'https://maven.neoforged.net/releases' }
-    mavenCentral()
-  }
-}
-rootProject.name = 'modpackai'
-```
-- Kotlin DSL(`settings.gradle.kts`)을 사용한다면:
-```kotlin
-pluginManagement {
-  repositories {
-    maven("https://maven.neoforged.net/releases")
-    gradlePluginPortal()
-    mavenCentral()
-  }
-}
-dependencyResolutionManagement {
-  repositories {
-    maven("https://maven.neoforged.net/releases")
-    mavenCentral()
-  }
-}
-rootProject.name = "modpackai"
-```
-
-3) Gradle 래퍼 사용(권장) 및 최신화
-- 시스템에 설치된 Debian 패키지 gradle(4.x)은 너무 구버전입니다. 사용하지 마세요.
-- 래퍼가 있으면 바로 사용:
+#### 3단계: NeoForge 모드 빌드
 ```bash
-if [ -x ./gradlew ]; then ./gradlew --version; fi
+# 모드 디렉토리로 이동
+cd minecraft_mod
+
+# Gradle Wrapper 생성 (프로젝트에 맞는 Gradle 버전 설정)
+# 참고: 시스템에 설치된 gradle이 오래되었을 수 있으므로, 이 방법이 가장 안정적입니다.
+gradle wrapper --gradle-version 8.8 --distribution-type all
+
+# Gradle Wrapper를 사용하여 모드 빌드 (이제 ./gradlew 사용)
+# 이 명령은 필요한 모든 파일을 다운로드하고 모드를 컴파일합니다.
+./gradlew build
 ```
-- 래퍼가 없거나 구버전이면 임시 Gradle로 래퍼 생성/업데이트:
+- **성공 시**: `minecraft_mod/build/libs/modpackai-1.0.0.jar` 와 같은 파일이 생성됩니다.
+- **오류 발생 시**: Java 버전이 21이 맞는지, `build.gradle` 파일에 오타가 없는지 확인하세요.
+
+#### 4단계: AI 백엔드 및 전체 설치
+- 모드 빌드가 성공적으로 완료되었다면, 이제 전체 자동 설치를 진행할 수 있습니다.
 ```bash
-# 임시 Gradle 8.10.2 설치(세션 한정 PATH)
-wget -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -O /tmp/gradle.zip
-sudo mkdir -p /opt/gradle && sudo unzip -q /tmp/gradle.zip -d /opt/gradle
-export PATH=/opt/gradle/gradle-8.10.2/bin:$PATH
+# 프로젝트 루트 디렉토리로 이동
+cd ..
 
-# 래퍼 생성/업데이트 후 래퍼만 사용
-gradle wrapper --gradle-version 8.10.2
-./gradlew --version
+# 전체 설치 스크립트 실행
+# 이 스크립트는 백엔드 설정, 모드 자동 배포, 서비스 등록을 모두 처리합니다.
+chmod +x install_mod.sh
+./install_mod.sh
 ```
 
-4) 빌드 실행
+#### 5단계: API 키 설정 및 서비스 재시작
+- 설치 마지막 단계에서 안내되는 `.env` 파일에 API 키를 설정합니다.
 ```bash
-./gradlew --refresh-dependencies clean build
+# AI 백엔드 환경 설정 파일 열기
+nano ~/minecraft-ai-backend/.env
+
+# 파일 내용에 API 키 추가
+# GOOGLE_API_KEY=your-google-api-key-here
+
+# 설정 후 서비스를 재시작하여 변경사항 적용
+sudo systemctl restart mc-ai-backend
 ```
 
-5) 참고: build.gradle(또는 build.gradle.kts)에 플러그인 선언이 있어야 합니다
-```groovy
-plugins {
-  id 'net.neoforged.gradle' version '7.0.80'
-}
-```
-Kotlin DSL일 경우 문법만 다르고 내용은 동일합니다.
-
-6) 쉬운 방법: 자동 준비/빌드 스크립트 사용(권장)
+#### 6단계: 설치 확인
 ```bash
-cd ~/minecraft-modpack-ai
-chmod +x scripts/prepare_mod_build.sh
-./scripts/prepare_mod_build.sh
+# 백엔드 서비스 상태 확인
+sudo systemctl status mc-ai-backend
+
+# 모드가 각 모드팩에 잘 설치되었는지 확인
+ls ~/*/mods/modpackai-*.jar
+
+# API 상태 확인
+curl http://localhost:5000/health
 ```
-설명:
-- Gradle 8.10.2 임시 설치 및 래퍼 생성/사용을 자동 처리
-- settings.gradle(.kts)에 NeoForged 저장소가 없으면 백업 후 안전하게 작성
-- `./gradlew --refresh-dependencies clean build` 실행 후 결과 JAR 경로 안내
-
-### **3단계: 모드 설치**
-```bash
-# 빌드된 모드를 각 모드팩에 복사
-for modpack in ~/*/; do
-    if [ -d "$modpack/mods" ]; then
-        # 정확한 파일명 확인 후 복사
-        MOD_FILE=$(find build/libs -name "modpackai-*.jar" | head -1)
-        if [ -n "$MOD_FILE" ]; then
-            cp "$MOD_FILE" "$modpack/mods/"
-            echo "ModpackAI 모드 설치 완료: $modpack"
-        fi
-    fi
-done
-```
-
-### **4단계: 백엔드 서비스 설정**
-```bash
-# install_mod.sh 스크립트의 서비스 설정 부분 실행
-cd ~/minecraft-modpack-ai
-./install_mod.sh --service-only
-```
-
-### **5단계: RAG 준비(선택, 권장)**
-```bash
-# 모드팩 디렉토리를 분석하여 RAG 인덱스 자동 구축(분석+구축 한 번에)
-curl -s -X POST http://localhost:5000/api/modpack/switch \
-  -H 'Content-Type: application/json' \
-  -d '{"modpack_path":"~/enigmatica_10","modpack_name":"Enigmatica 10","modpack_version":"1.0.0"}' | jq .
-
-# 상태 확인
-curl -s http://localhost:5000/rag/status | jq .
-
-# 필요 시 수동 구축도 가능
-curl -s -X POST http://localhost:5000/rag/build \
-  -H 'Content-Type: application/json' \
-  -d '{"docs":[{"text":"다이아몬드 블록=다이아 주괴x9","source":"wiki"}]}' | jq .
-
-# 인덱스 영속화
-curl -s -X POST http://localhost:5000/rag/save | jq .
-```
+- 모든 명령이 오류 없이 실행되면 설치가 완료된 것입니다. 이제 각 모드팩 서버를 시작하여 게임 내에서 AI를 사용할 수 있습니다.
 
 ---
 
@@ -317,7 +254,7 @@ sudo nano /etc/nginx/sites-available/mc-ai-backend
 # NeoForge 서버 로그 확인
 tail -f ~/modpack-name/logs/latest.log | grep modpackai
 
-# Java 버전 확인 (Java 17+ 필요)
+# Java 버전 확인 (Java 21+ 필요)
 java -version
 
 # 모드 파일 확인
@@ -353,11 +290,11 @@ python app.py
 ### **모드 빌드 실패**
 ```bash
 # Gradle 버전 확인
-gradle --version
+cd ~/minecraft-modpack-ai/minecraft_mod
+./gradlew --version
 
 # 빌드 캐시 정리
-cd ~/minecraft-modpack-ai/minecraft_mod
-./gradlew clean build
+./gradlew clean build --refresh-dependencies
 
 # Java 버전 확인
 java -version
@@ -417,7 +354,7 @@ fi
 
 ### **사전 준비**
 - [ ] GCP VM Debian 서버 접속
-- [ ] Java 17+ 설치 확인
+- [ ] Java 21+ 설치 확인
 - [ ] Python 3.9+ 설치 확인
 - [ ] NeoForge 모드팩 서버 설치
 - [ ] API 키 준비 (Google Gemini 권장)

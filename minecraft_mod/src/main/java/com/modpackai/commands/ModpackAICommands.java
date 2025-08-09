@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -109,10 +110,10 @@ public class ModpackAICommands {
         
         // AI 아이템 생성
         ItemStack aiItem = new ItemStack(ModpackAIMod.getInstance().getConfig().getAIItemMaterial());
-        aiItem.setHoverName(Component.literal(ModpackAIMod.getInstance().getConfig().getAIItemName()));
+        aiItem.set(DataComponents.CUSTOM_NAME, Component.literal(ModpackAIMod.getInstance().getConfig().getAIItemName()));
         
         // 인벤토리에 추가
-        if (player.addItem(aiItem)) {
+        if (player.getInventory().add(aiItem)) {
             player.sendSystemMessage(Component.literal("§a[ModpackAI] AI 아이템을 받았습니다!"));
             ModpackAIMod.LOGGER.info("플레이어 {}에게 AI 아이템 지급", player.getName().getString());
         } else {
@@ -219,7 +220,7 @@ public class ModpackAICommands {
     private static int handleStatusCommand(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         
-        player.sendSystemMessage(Component.literal("§6=== ModpackAI 시스템 상태 ==="));
+        player.sendSystemMessage(Component.literal("§6=== ModpackAI 시스템 ��태 ==="));
         player.sendSystemMessage(Component.literal("§f모드 버전: 1.0.0"));
         player.sendSystemMessage(Component.literal("§f모드팩: " + getModpackName() + " v" + ModpackAIMod.getInstance().getConfig().getModpackVersion()));
         player.sendSystemMessage(Component.literal("§f백엔드 URL: " + ModpackAIMod.getInstance().getConfig().getBackendUrl()));

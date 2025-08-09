@@ -43,8 +43,33 @@ else
   warn "java 명령을 찾을 수 없습니다. JDK 17+를 설치하세요."
 fi
 
-# 2) Gradle 8.10.2 준비 및 래퍼 생성/사용
-GRADLE_VERSION="8.10.2"
+# 2) settings.gradle(.kts) 구성: NeoForged 저장소 추가 (플러그인 해석 전에 필요)
+SETTINGS_GROOVY="settings.gradle"
+SETTINGS_KTS="settings.gradle.kts"
+
+NEOFORGED_BLOCK_GROOVY='pluginManagement {\n  repositories {\n    maven { url "https://maven.neoforged.net/releases" }\n    gradlePluginPortal()\n    mavenCentral()\n  }\n  plugins {\n    id "net.neoforged.gradle.userdev" version "7.0.0"\n  }\n}\ndependencyResolutionManagement {\n  repositories {\n    maven { url "https://maven.neoforged.net/releases" }\n    mavenCentral()\n  }\n}\nrootProject.name = "modpackai"\n'
+
+NEOFORGED_BLOCK_KTS='pluginManagement {\n  repositories {\n    maven("https://maven.neoforged.net/releases")\n    gradlePluginPortal()\n    mavenCentral()\n  }\n  plugins {\n    id("net.neoforged.gradle.userdev") version "7.0.0"\n  }\n}\ndependencyResolutionManagement {\n  repositories {\n    maven("https://maven.neoforged.net/releases")\n    mavenCentral()\n  }\n}\nrootProject.name = "modpackai"\n'
+
+ensure_settings_repo() {
+  local file="$1"; local block="$2"; local label="$3"
+  if [[ -f "$file" ]]; then
+    if grep -q "maven\.neoforged\.net" "$file"; then
+      ok "$label 이미 설정되어 있음: $file"
+      return 0
+    fi
+    cp "$file" "$file.bak"
+    warn "$file 에 NeoForged 저장소가 없어 백업 후 안전 교체합니다 → $file.bak"
+  fi
+  printf "%b" "$block" > "$file"
+  ok "$label 작성 완료: $file"
+}
+
+# 강제로 Groovy DSL 사용(이스케이프 문제 회피)
+ensure_settings_repo "$SETTINGS_GROOVY" "$NEOFORGED_BLOCK_GROOVY" "settings.gradle"
+
+# 3) Gradle 8.13 준비 및 래퍼 생성/사용 (settings 작성 이후 실행)
+GRADLE_VERSION="8.8"
 GRADLE_BASE="/opt/gradle/gradle-${GRADLE_VERSION}"
 if [[ ! -x "./gradlew" ]]; then
   log "Gradle 래퍼가 없어 임시 Gradle ${GRADLE_VERSION}를 설치합니다. (sudo 필요)"
@@ -63,41 +88,13 @@ fi
 log "Gradle 버전 확인"
 ./gradlew --version
 
-# 3) settings.gradle(.kts) 구성: NeoForged 저장소 추가
-SETTINGS_GROOVY="settings.gradle"
-SETTINGS_KTS="settings.gradle.kts"
-
-NEOFORGED_BLOCK_GROOVY='pluginManagement {\n  repositories {\n    maven { url \"https://maven.neoforged.net/releases\" }\n    gradlePluginPortal()\n    mavenCentral()\n  }\n}\ndependencyResolutionManagement {\n  repositories {\n    maven { url \"https://maven.neoforged.net/releases\" }\n    mavenCentral()\n  }\n}\nrootProject.name = \"modpackai\"\n'
-
-NEOFORGED_BLOCK_KTS='pluginManagement {\n  repositories {\n    maven("https://maven.neoforged.net/releases")\n    gradlePluginPortal()\n    mavenCentral()\n  }\n}\ndependencyResolutionManagement {\n  repositories {\n    maven("https://maven.neoforged.net/releases")\n    mavenCentral()\n  }\n}\nrootProject.name = "modpackai"\n'
-
-ensure_settings_repo() {
-  local file="$1"; local block="$2"; local label="$3"
-  if [[ -f "$file" ]]; then
-    if grep -q "maven\.neoforged\.net" "$file"; then
-      ok "$label 이미 설정되어 있음: $file"
-      return 0
-    fi
-    cp "$file" "$file.bak"
-    warn "$file 에 NeoForged 저장소가 없어 백업 후 안전 교체합니다 → $file.bak"
-  fi
-  printf "%b" "$block" > "$file"
-  ok "$label 작성 완료: $file"
-}
-
-if [[ -f "$SETTINGS_KTS" ]]; then
-  ensure_settings_repo "$SETTINGS_KTS" "$NEOFORGED_BLOCK_KTS" "settings.gradle.kts"
-else
-  ensure_settings_repo "$SETTINGS_GROOVY" "$NEOFORGED_BLOCK_GROOVY" "settings.gradle"
-fi
-
 # 4) 빌드 실행
 log "빌드 시작: clean build (--refresh-dependencies)"
 ./gradlew --refresh-dependencies clean build
 
 # 5) 결과 표시
 log "빌드 결과 파일 목록"
-find "$MOD_DIR/build/libs" -maxdepth 1 -type f -name "*.jar" -printf "%f\n" 2>/dev/null || true
+find "$MOD_DIR/build/libs" -maxdepth 1 -type f -name "*.jar" 2>/dev/null | sed 's|.*/||' || true
 ok "빌드 완료"
 
 echo "다음 단계: 생성된 JAR를 각 모드팩 mods/ 폴더로 복사하세요."

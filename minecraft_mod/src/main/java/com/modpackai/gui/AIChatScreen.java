@@ -25,7 +25,9 @@ public class AIChatScreen extends Screen {
     private static final int MARGIN = 10;
     private static final int LEFT_PANEL_WIDTH = 180;
     private static final int GRID_CELL_SIZE = 18;
-    
+    private static final int CHAT_WIDTH = 300;
+    private static final int CHAT_HEIGHT = 180;
+
     // 오른쪽: 채팅 영역
     private EditBox messageInput;
     private Button sendButton;
@@ -111,7 +113,7 @@ public class AIChatScreen extends Screen {
                 chatTop,
                 LEFT_PANEL_WIDTH,
                 INPUT_HEIGHT,
-                Component.literal("아이템명을 입력...")
+                Component.literal("���이템명을 입력...")
         );
         this.recipeItemInput.setMaxLength(100);
         this.addWidget(this.recipeItemInput);

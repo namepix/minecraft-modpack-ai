@@ -34,30 +34,20 @@ BUILT_MOD_FILE=""
 check_system() {
     log_info "시스템 요구사항 확인 중..."
     
-    # Java 17+ 확인
+    # Java 21+ 확인
     if command -v java &> /dev/null; then
         JAVA_VERSION=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
         JAVA_MAJOR=$(echo $JAVA_VERSION | cut -d'.' -f1)
         
-        if [[ $JAVA_MAJOR -ge 17 ]]; then
+        if [[ $JAVA_MAJOR -ge 21 ]]; then
             log_success "Java $JAVA_VERSION 확인됨"
         else
-            log_error "Java 17+ 필요. 현재 버전: $JAVA_VERSION"
+            log_error "Java 21+ 필요. 현재 버전: $JAVA_VERSION"
             exit 1
         fi
     else
         log_error "Java가 설치되지 않음"
         exit 1
-    fi
-    
-    # Gradle 또는 Gradle 래퍼 확인
-    if [[ -x "minecraft_mod/gradlew" ]]; then
-        log_success "Gradle 래퍼 확인됨 (minecraft_mod/gradlew)"
-    elif ! command -v gradle &> /dev/null; then
-        log_warning "Gradle이 설치되지 않음. 설치를 진행합니다..."
-        install_gradle
-    else
-        log_success "시스템 Gradle 확인됨"
     fi
     
     # Python 확인
@@ -80,28 +70,6 @@ check_system() {
     fi
 }
 
-# Gradle 설치
-install_gradle() {
-    log_info "Gradle 설치 중..."
-    
-    # 우분투/데비안
-    if command -v apt-get &> /dev/null; then
-        sudo apt-get update
-        sudo apt-get install -y gradle
-    # CentOS/RHEL
-    elif command -v yum &> /dev/null; then
-        sudo yum install -y gradle
-    # macOS
-    elif command -v brew &> /dev/null; then
-        brew install gradle
-    else
-        log_error "지원되지 않는 운영체제입니다"
-        exit 1
-    fi
-    
-    log_success "Gradle 설치 완료"
-}
-
 # 백엔드 설치
 install_backend() {
     log_info "AI 백엔드 설치 중..."
@@ -111,7 +79,7 @@ install_backend() {
     # 가상환경 생성
     if [[ ! -d "venv" ]]; then
         if ! python3 -m venv venv; then
-            log_warning "가상환경 생성 실패. python3-venv 패키지를 설치하고 재시도합니다."
+            log_warning "가상환경 생성 실패. python3-venv 패키지를 설��하고 재시도합니다."
             if command -v apt-get &> /dev/null; then
                 sudo apt-get update && sudo apt-get install -y python3-venv
             fi
@@ -137,12 +105,19 @@ build_mod() {
     
     cd minecraft_mod
     
-    # Gradle 빌드 (래퍼 우선, 없으면 시스템 gradle)
-    if [[ -x "./gradlew" ]]; then
-        ./gradlew clean build --no-daemon
-    else
-        gradle clean build --no-daemon
+    # Gradle Wrapper 생성 및 실행 (가장 안정적인 방법)
+    if [[ ! -f "gradlew" ]]; then
+        log_warning "Gradle Wrapper(gradlew)가 없습니다. 생성합니다..."
+        # 시스템 gradle이 너무 오래되었을 수 있으므로, 임시 gradle로 wrapper를 생성
+        wget -q https://services.gradle.org/distributions/gradle-8.8-bin.zip -O /tmp/gradle-8.8-bin.zip
+        unzip -q /tmp/gradle-8.8-bin.zip -d /tmp
+        /tmp/gradle-8.8/bin/gradle wrapper --gradle-version 8.8 --distribution-type all
+        rm -rf /tmp/gradle-8.8 /tmp/gradle-8.8-bin.zip
     fi
+
+    # Gradle Wrapper를 사용하여 빌드
+    chmod +x ./gradlew
+    ./gradlew build
 
     # 산출물 자동 탐지 (modpackai-*.jar 중 최신 파일)
     BUILT_MOD_FILE=$(find build/libs -maxdepth 1 -type f -name "modpackai-*.jar" | sort | tail -n 1 || true)
@@ -161,79 +136,48 @@ install_to_modpacks() {
     log_info "모드팩 감지 및 모드 설치 중..."
     
     INSTALLED_COUNT=0
-    local MOD_FILE_PATH="${BUILT_MOD_FILE}"
-    if [[ -z "${MOD_FILE_PATH}" ]]; then
-        MOD_FILE_PATH=$(find minecraft_mod/build/libs -maxdepth 1 -type f -name "modpackai-*.jar" | sort | tail -n 1 || true)
-    fi
-    if [[ -z "${MOD_FILE_PATH}" || ! -f "${MOD_FILE_PATH}" ]]; then
-        log_error "설치에 사용할 모드 JAR를 찾을 수 없습니다 (minecraft_mod/build/libs/modpackai-*.jar)"
+    local MOD_FILE_PATH="minecraft_mod/${BUILT_MOD_FILE}"
+    if [[ -z "${BUILT_MOD_FILE}" || ! -f "${MOD_FILE_PATH}" ]]; then
+        log_error "설치에 사용할 모드 JAR를 찾을 수 없습니다: ${MOD_FILE_PATH}"
         exit 1
     fi
     
-    # 홈 디렉토리에서 모드팩 찾기
-    for dir in ~/*/; do
-        if [[ -d "$dir/mods" ]]; then
-            MODPACK_NAME=$(basename "$dir")
-            log_info "모드팩 발견: $MODPACK_NAME"
+    # find 결과를 배열에 저장
+    mapfile -t mod_dirs < <(find "$HOME" -maxdepth 2 -type d -name "mods")
 
-            # 호환성 체크: NeoForge 전용 설치
-            IS_FABRIC=0
-            IS_FORGE=0
-            IS_NEOFORGE=0
+    # 배열을 순회
+    for mods_dir in "${mod_dirs[@]}"; do
+        local dir
+        dir=$(dirname "$mods_dir")
+        MODPACK_NAME=$(basename "$dir")
+        log_info "모드팩 발견: $MODPACK_NAME"
 
-            # Fabric 런처 존재 시 Fabric으로 판단
-            if [[ -f "$dir/fabric-server-launcher.jar" ]]; then
-                IS_FABRIC=1
-            fi
+        # 호환성 체크: NeoForge 전용 설치
+        IS_NEOFORGE=0
+        if ls "$dir"/neoforge-*.jar >/dev/null 2>&1 || grep -Rqi "neoforge" "$dir/libraries" 2>/dev/null; then
+            IS_NEOFORGE=1
+        fi
 
-            # 루트에 버전 표시 JAR 존재 시 Forge/NeoForge 추정
-            if ls "$dir"/forge-*.jar >/dev/null 2>&1; then
-                IS_FORGE=1
-            fi
-            if ls "$dir"/neoforge-*.jar >/dev/null 2>&1; then
-                IS_NEOFORGE=1
-            fi
-
-            # 라이브러리에서 문자열 탐지 보강
-            if [[ -d "$dir/libraries" ]]; then
-                if grep -Rqi "neoforge" "$dir/libraries" 2>/dev/null; then
-                    IS_NEOFORGE=1
-                fi
-                if grep -Rqi "forge" "$dir/libraries" 2>/dev/null && [[ $IS_NEOFORGE -eq 0 ]]; then
-                    IS_FORGE=1
-                fi
-            fi
-
-            if [[ $IS_FABRIC -eq 1 ]]; then
-                log_warning "호환되지 않는 서버 타입(Fabric): $MODPACK_NAME → 건너뜀"
-                continue
-            fi
-            if [[ $IS_FORGE -eq 1 && $IS_NEOFORGE -eq 0 ]]; then
-                log_warning "호환되지 않는 서버 타입(Forge): $MODPACK_NAME → 건너뜀"
-                continue
-            fi
-            if [[ $IS_NEOFORGE -eq 0 ]]; then
-                log_warning "NeoForge 징후가 없어 건너뜀: $MODPACK_NAME"
-                continue
-            fi
-            
-            # 모드 복사
-            cp "${MOD_FILE_PATH}" "$dir/mods/"
-            
-            if ls "$dir/mods"/modpackai-*.jar >/dev/null 2>&1; then
-                log_success "모드 설치 완료: $MODPACK_NAME"
-                ((INSTALLED_COUNT++))
-            else
-                log_warning "모드 설치 실패: $MODPACK_NAME"
-            fi
+        if [[ $IS_NEOFORGE -eq 0 ]]; then
+            log_warning "NeoForge 모드팩이 아니므로 건너뜁니다: $MODPACK_NAME"
+            continue
+        fi
+        
+        # 모드 복사
+        cp "${MOD_FILE_PATH}" "$mods_dir/"
+        
+        if ls "$mods_dir"/modpackai-*.jar >/dev/null 2>&1; then
+            log_success "모드 설치 완료: $MODPACK_NAME"
+            ((INSTALLED_COUNT++))
+        else
+            log_warning "모드 설치 실패: $MODPACK_NAME"
         fi
     done
     
     if [[ $INSTALLED_COUNT -eq 0 ]]; then
-        log_warning "NeoForge 모드팩을 찾을 수 없습니다"
-        log_info "mods/ 폴더가 있는 모드팩 디렉토리가 필요합니다"
+        log_warning "설치할 NeoForge 모드팩을 찾을 수 없습니다"
     else
-        log_success "$INSTALLED_COUNT개 모드팩에 모드 설치 완료"
+        log_success "$INSTALLED_COUNT개 모드팩에 모드 ��치 완료"
     fi
 }
 
@@ -241,15 +185,16 @@ install_to_modpacks() {
 setup_backend_service() {
     log_info "백엔드 서비스 설정 중..."
     
-    # 백엔드 디렉토리로 이동
     BACKEND_DIR="$HOME/minecraft-ai-backend"
     
     if [[ ! -d "$BACKEND_DIR" ]]; then
         mkdir -p "$BACKEND_DIR"
-        cp -r backend/* "$BACKEND_DIR/"
     fi
+    
+    # 소스 파일 복사 (venv 제외)
+    rsync -a --exclude 'venv' "backend/" "$BACKEND_DIR/"
 
-    # 대상 경로에 venv 보장 (service-only로 실행될 수 있으므로 여기서도 보장)
+    # 대상 경로에 venv 보장
     if [[ ! -d "$BACKEND_DIR/venv" ]]; then
         log_info "백엔드 가상환경 생성 및 의존성 설치 중..."
         python3 -m venv "$BACKEND_DIR/venv"
@@ -271,7 +216,6 @@ After=network.target
 Type=simple
 User=$USER
 WorkingDirectory=$BACKEND_DIR
-Environment=PATH=$BACKEND_DIR/venv/bin
 ExecStart=$BACKEND_DIR/venv/bin/python app.py
 Restart=always
 RestartSec=10
@@ -295,20 +239,7 @@ setup_api_keys() {
     ENV_FILE="$HOME/minecraft-ai-backend/.env"
     
     if [[ ! -f "$ENV_FILE" ]]; then
-        cat > "$ENV_FILE" << EOF
-# Google Gemini API 키 (권장, 웹검색 지원)
-GOOGLE_API_KEY=your-google-api-key-here
-
-# OpenAI API 키 (선택, 백업용)
-OPENAI_API_KEY=your-openai-api-key-here
-
-# Anthropic API 키 (선택, 백업용)
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-
-# Flask 서버 설정
-PORT=5000
-DEBUG=false
-EOF
+        cp env.example "$ENV_FILE"
     fi
     
     echo
@@ -327,14 +258,14 @@ EOF
 start_services() {
     log_info "서비스 시작 중..."
     
-    # 백엔드 서비스 시작
-    sudo systemctl start mc-ai-backend
+    sudo systemctl restart mc-ai-backend
     
-    # 서비스 상태 확인
+    sleep 3
     if sudo systemctl is-active --quiet mc-ai-backend; then
         log_success "백엔드 서비스 시작됨"
     else
         log_warning "백엔드 서비스 시작 실패 - API 키를 설정 후 다시 시도하세요"
+        sudo systemctl status mc-ai-backend || true
     fi
 }
 
@@ -342,24 +273,21 @@ start_services() {
 verify_installation() {
     log_info "설치 검증 중..."
     
-    # 모드 파일 확인
-    MOD_COUNT=$(find ~ -type f -name "modpackai-*.jar" -path "*/mods/*" | wc -l)
+    MOD_COUNT=$(find ~ -maxdepth 3 -type f -name "modpackai-*.jar" -path "*/mods/*" | wc -l)
     if [[ $MOD_COUNT -gt 0 ]]; then
         log_success "모드 설치 확인: $MOD_COUNT 개 모드팩"
     else
         log_warning "설치된 모드를 찾을 수 없음"
     fi
     
-    # 백엔드 상태 확인
     if sudo systemctl is-active --quiet mc-ai-backend; then
         log_success "백엔드 서비스 실행 중"
         
-        # API 테스트
         sleep 2
-        if curl -s http://localhost:5000/health > /dev/null; then
+        if curl -s --fail http://localhost:5000/health > /dev/null; then
             log_success "API 연결 확인"
         else
-            log_warning "API 연결 실패 - API 키를 확인하세요"
+            log_warning "API 연결 실패 - API 키 또는 백엔드 로그를 확인하세요"
         fi
     else
         log_warning "백엔드 서비스 중지됨"
@@ -369,7 +297,7 @@ verify_installation() {
 # 사용법 안내
 show_usage() {
     echo
-    echo "🎮 ModpackAI 설치가 완료되었습니다!"
+    echo "🎮 ModpackAI 설치가 완료���었습니다!"
     echo
     echo "📋 다음 단계:"
     echo "   1. API 키 설정: nano $HOME/minecraft-ai-backend/.env"
@@ -391,27 +319,9 @@ show_usage() {
 
 # 메인 실행 함수
 main() {
-    # 인자 파싱
-    SERVICE_ONLY=0
-    if [[ "${1:-}" == "--service-only" ]]; then
-        SERVICE_ONLY=1
-    fi
-
     echo "🚀 ModpackAI NeoForge 모드 설치 시작"
     echo
 
-    if [[ $SERVICE_ONLY -eq 1 ]]; then
-        # 서비스 설정만 수행 (단계별 설치 4단계용)
-        setup_backend_service
-        setup_api_keys
-        start_services
-        verify_installation
-        show_usage
-        log_success "서비스 설정 완료!"
-        return 0
-    fi
-
-    # 전체 설치 플로우
     check_system
     install_backend
     build_mod

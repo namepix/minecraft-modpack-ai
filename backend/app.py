@@ -30,6 +30,12 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 GEMINI_WEBSEARCH_ENABLED = os.getenv('GEMINI_WEBSEARCH_ENABLED', 'true').lower() == 'true'
+
+# 모델 설정 (환경변수로 설정 가능)
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-pro')
+OPENAI_MODEL_PRIMARY = os.getenv('OPENAI_MODEL_PRIMARY', 'gpt-4o-mini')
+OPENAI_MODEL_FALLBACK = os.getenv('OPENAI_MODEL_FALLBACK', 'gpt-3.5-turbo')
+CLAUDE_MODEL = os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022')
 # RAG 프롬프트 첨부 예산(환경변수로 조정 가능)
 RAG_TOP_K = int(os.getenv('RAG_TOP_K', '5'))
 RAG_SNIPPET_MAX_CHARS = int(os.getenv('RAG_SNIPPET_MAX_CHARS', '500'))
@@ -133,6 +139,20 @@ def build_rag(docs: List[Dict[str, Any]]):
 def rag_search(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     if not rag_enabled or rag_model is None or rag_index is None:
         return []
+    try:
+        import numpy as np
+        q = rag_model.encode([query], normalize_embeddings=True).astype('float32')
+        D, I = rag_index.search(q, top_k)
+        results: List[Dict[str, Any]] = []
+        for idx, score in zip(I[0], D[0]):
+            if 0 <= idx < len(rag_documents):
+                doc = rag_documents[idx].copy()
+                doc['score'] = float(score)
+                results.append(doc)
+        return results
+    except Exception as e:
+        print(f"RAG 검색 실패: {e}")
+        return []
 
 def rag_save_to_disk() -> bool:
     """rag_index와 rag_documents를 디스크에 저장"""
@@ -169,20 +189,6 @@ def rag_load_from_disk() -> bool:
     except Exception as e:
         print(f"RAG 로드 실패: {e}")
         return False
-    try:
-        import numpy as np
-        q = rag_model.encode([query], normalize_embeddings=True).astype('float32')
-        D, I = rag_index.search(q, top_k)
-        results = []
-        for idx, score in zip(I[0], D[0]):
-            if 0 <= idx < len(rag_documents):
-                doc = rag_documents[idx].copy()
-                doc['score'] = float(score)
-                results.append(doc)
-        return results
-    except Exception as e:
-        print(f"RAG 검색 실패: {e}")
-        return []
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -259,13 +265,13 @@ def chat():
                 with track_model_usage("gemini-2.5-pro-web"):
                     if config is not None:
                         response = gemini_client.models.generate_content(
-                            model="gemini-2.5-pro",
+                            model=GEMINI_MODEL,
                             contents=full_message,
                             config=config
                         )
                     else:
                         response = gemini_client.models.generate_content(
-                            model="gemini-2.5-pro",
+                            model=GEMINI_MODEL,
                             contents=full_message
                         )
                     ai_response = response.text
@@ -275,7 +281,7 @@ def chat():
                 try:
                     full_message = context + "\n\n사용자: " + message + "\n\nAI:"
                     response = gemini_client.models.generate_content(
-                        model="gemini-2.5-pro",
+                        model=GEMINI_MODEL,
                         contents=full_message
                     )
                     ai_response = response.text
@@ -286,7 +292,7 @@ def chat():
             try:
                 # 2025년 최신 OpenAI API 방식
                 response = openai_client.chat.completions.create(
-                    model="gpt-4o-mini",  # 무료 티어 최신 모델
+                    model=OPENAI_MODEL_PRIMARY,  # 환경변수로 설정 가능
                     messages=[
                         {"role": "system", "content": context},
                         {"role": "user", "content": message}
@@ -300,7 +306,7 @@ def chat():
                 # 폴백 시도
                 try:
                     response = openai_client.chat.completions.create(
-                        model="gpt-3.5-turbo",
+                        model=OPENAI_MODEL_FALLBACK,
                         messages=[
                             {"role": "system", "content": context},
                             {"role": "user", "content": message}
@@ -315,7 +321,7 @@ def chat():
         elif current_model == "claude" and claude_client:
             try:
                 response = claude_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",  # 2025년 최신 Claude 모델
+                    model=CLAUDE_MODEL,  # 환경변수로 설정 가능
                     max_tokens=1000,
                     messages=[
                         {"role": "user", "content": context + "\n\n" + message}
@@ -524,7 +530,7 @@ def get_recipe(item_name):
                 query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요. 최신 정보를 검색해서 정확한 답변을 제공해주세요."
                 
                 response = gemini_client.models.generate_content(
-                    model="gemini-2.5-pro",
+                    model=GEMINI_MODEL,
                     contents=query,
                     config=config
                 )
@@ -535,7 +541,7 @@ def get_recipe(item_name):
                 try:
                     query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
                     response = gemini_client.models.generate_content(
-                        model="gemini-2.5-pro",
+                        model=GEMINI_MODEL,
                         contents=query
                     )
                     recipe_text = response.text
@@ -546,7 +552,7 @@ def get_recipe(item_name):
             try:
                 query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
                 response = openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=OPENAI_MODEL_PRIMARY,
                     messages=[{"role": "user", "content": query}],
                     max_tokens=500,
                     temperature=0.7
@@ -559,7 +565,7 @@ def get_recipe(item_name):
             try:
                 query = f"마인크래프트에서 {item_name}의 제작법을 알려주세요. 재료와 제작 방법을 포함해서 답변해주세요."
                 response = claude_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model=CLAUDE_MODEL,
                     max_tokens=500,
                     messages=[{"role": "user", "content": query}]
                 )
