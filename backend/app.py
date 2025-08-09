@@ -15,6 +15,8 @@ from google.genai import types
 from middleware.security import SecurityMiddleware, require_valid_input, measure_performance
 from middleware.monitoring import MonitoringMiddleware, track_model_usage, track_user_activity
 from modpack_parser import scan_modpack
+# GCP RAG 시스템
+from gcp_rag_system import gcp_rag
 
 load_dotenv()
 
@@ -30,6 +32,7 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 GEMINI_WEBSEARCH_ENABLED = os.getenv('GEMINI_WEBSEARCH_ENABLED', 'true').lower() == 'true'
+GCP_RAG_ENABLED = os.getenv('GCP_RAG_ENABLED', 'true').lower() == 'true'
 
 # 모델 설정 (환경변수로 설정 가능)
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-pro')
@@ -215,29 +218,154 @@ def chat():
         modpack_name = data.get('modpack_name', 'Unknown Modpack')
         modpack_version = data.get('modpack_version', '1.0.0')
 
-        # 마인크래프트 모드팩 컨텍스트 + RAG 첨부
+        # 마인크래프트 모드팩 컨텍스트 + RAG 첨부 (RAG 우선 사용)
         rag_snippets = []
         rag_hits_count = 0
         rag_used_chars = 0
-        if rag_enabled:
-            hits = rag_search(message, top_k=RAG_TOP_K)
-            rag_hits_count = len(hits)
-            for h in hits:
-                if rag_used_chars >= RAG_TOTAL_MAX_CHARS:
-                    break
-                src = h.get('source', '') or 'unknown'
-                txt = (h.get('text', '') or '').replace('\n', ' ').strip()
-                if len(txt) > RAG_SNIPPET_MAX_CHARS:
-                    txt = txt[:RAG_SNIPPET_MAX_CHARS] + ' …'
-                # 총량 예산 체크
-                remaining = RAG_TOTAL_MAX_CHARS - rag_used_chars
-                if len(txt) > remaining:
-                    if remaining < 50:
-                        break
-                    txt = txt[:remaining] + ' …'
-                rag_snippets.append(f"- [출처:{src}] {txt}")
-                rag_used_chars += len(txt)
-        rag_block = "\n".join(rag_snippets) if rag_snippets else "(관련 문서 없음)"
+        gcp_rag_results = []
+        rag_debug_info = {
+            'rag_attempted': True,
+            'rag_priority': 'gcp_first',
+            'fallback_reason': None
+        }
+        rag_system_used = "none"
+        
+        # 1. GCP RAG 시스템 우선 시도 (기본값)
+        if GCP_RAG_ENABLED and gcp_rag.is_enabled():
+            try:
+                print(f"🔍 GCP RAG 검색 시도: '{message[:50]}...' for {modpack_name} v{modpack_version}")
+                
+                gcp_results = gcp_rag.search_documents(
+                    query=message,
+                    modpack_name=modpack_name,
+                    modpack_version=modpack_version,
+                    top_k=RAG_TOP_K,
+                    min_score=0.6  # 임계값 낮춤 (더 많은 결과)
+                )
+                
+                if gcp_results:
+                    gcp_rag_results = gcp_results
+                    rag_system_used = "gcp_rag"
+                    
+                    for result in gcp_results:
+                        if rag_used_chars >= RAG_TOTAL_MAX_CHARS:
+                            break
+                        
+                        src = result.get('doc_source', 'unknown')
+                        txt = result.get('text', '').replace('\n', ' ').strip()
+                        similarity = result.get('similarity', 0.0)
+                        
+                        if len(txt) > RAG_SNIPPET_MAX_CHARS:
+                            txt = txt[:RAG_SNIPPET_MAX_CHARS] + ' …'
+                        
+                        remaining = RAG_TOTAL_MAX_CHARS - rag_used_chars
+                        if len(txt) > remaining:
+                            if remaining < 50:
+                                break
+                            txt = txt[:remaining] + ' …'
+                        
+                        rag_snippets.append(f"- [GCP-RAG:{similarity:.2f}] [출처:{src}] {txt}")
+                        rag_used_chars += len(txt)
+                    
+                    rag_hits_count = len(gcp_results)
+                    rag_debug_info['gcp_rag'] = {
+                        'used': True,
+                        'results_count': len(gcp_results),
+                        'results': gcp_results[:3],  # 상위 3개만 디버그용으로 저장
+                        'total_chars': rag_used_chars
+                    }
+                    
+                    print(f"✅ GCP RAG 성공: {len(gcp_results)}개 문서 검색됨")
+                    
+                else:
+                    # GCP RAG에서 결과 없음
+                    rag_debug_info['fallback_reason'] = f"GCP RAG에서 '{modpack_name} v{modpack_version}' 모드팩 데이터 없음 또는 관련성 낮음"
+                    rag_debug_info['gcp_rag'] = {
+                        'used': True,
+                        'results_count': 0,
+                        'no_results_reason': 'No matching documents or low similarity scores'
+                    }
+                    print(f"⚠️ GCP RAG: '{modpack_name} v{modpack_version}' 관련 문서 없음")
+                
+            except Exception as e:
+                error_msg = f"GCP RAG 검색 오류: {str(e)}"
+                print(f"❌ {error_msg}")
+                rag_debug_info['fallback_reason'] = error_msg
+                rag_debug_info['gcp_rag'] = {
+                    'used': False, 
+                    'error': str(e),
+                    'error_type': type(e).__name__
+                }
+        else:
+            # GCP RAG 비활성화됨
+            rag_debug_info['fallback_reason'] = "GCP RAG 시스템 비활성화됨"
+            rag_debug_info['gcp_rag'] = {
+                'used': False,
+                'disabled_reason': 'GCP_RAG_ENABLED=false or gcp_rag not initialized'
+            }
+            print("⚠️ GCP RAG 비활성화 상태")
+        
+        # 2. GCP RAG 실패/결과 없음 시 로컬 RAG 폴백
+        if not rag_snippets and rag_enabled:
+            try:
+                print("🔄 로컬 RAG 폴백 시도...")
+                hits = rag_search(message, top_k=RAG_TOP_K)
+                
+                if hits:
+                    rag_hits_count = len(hits)
+                    rag_system_used = "local_rag"
+                    
+                    for h in hits:
+                        if rag_used_chars >= RAG_TOTAL_MAX_CHARS:
+                            break
+                        src = h.get('source', '') or 'unknown'
+                        txt = (h.get('text', '') or '').replace('\n', ' ').strip()
+                        score = h.get('score', 0.0)
+                        
+                        if len(txt) > RAG_SNIPPET_MAX_CHARS:
+                            txt = txt[:RAG_SNIPPET_MAX_CHARS] + ' …'
+                        remaining = RAG_TOTAL_MAX_CHARS - rag_used_chars
+                        if len(txt) > remaining:
+                            if remaining < 50:
+                                break
+                            txt = txt[:remaining] + ' …'
+                        rag_snippets.append(f"- [로컬-RAG:{score:.2f}] [출처:{src}] {txt}")
+                        rag_used_chars += len(txt)
+                    
+                    rag_debug_info['local_rag'] = {
+                        'used': True,
+                        'results_count': len(hits),
+                        'fallback_from': 'gcp_rag',
+                        'total_chars': rag_used_chars
+                    }
+                    
+                    print(f"✅ 로컬 RAG 폴백 성공: {len(hits)}개 문서 검색됨")
+                    
+                else:
+                    rag_debug_info['local_rag'] = {
+                        'used': True,
+                        'results_count': 0,
+                        'no_results_reason': 'No matching documents in local index'
+                    }
+                    print("⚠️ 로컬 RAG에서도 관련 문서 없음")
+                    
+            except Exception as e:
+                error_msg = f"로컬 RAG 폴백 오류: {str(e)}"
+                print(f"❌ {error_msg}")
+                rag_debug_info['local_rag'] = {
+                    'used': False,
+                    'error': str(e),
+                    'error_type': type(e).__name__
+                }
+        
+        # 3. RAG 결과 없으면 웹검색만 사용한다는 알림
+        if not rag_snippets:
+            rag_system_used = "web_search_only"
+            if not rag_debug_info.get('fallback_reason'):
+                rag_debug_info['fallback_reason'] = "모든 RAG 시스템에서 관련 문서를 찾을 수 없음"
+            print("⚠️ RAG 시스템 결과 없음 - 웹검색만 사용")
+        
+        rag_block = "\n".join(rag_snippets) if rag_snippets else "(모드팩 관련 문서를 찾을 수 없어서 웹검색만 사용합니다)"
 
         context = f"""
 당신은 마인크래프트 모드팩 전문가 AI 어시스턴트입니다.
@@ -344,12 +472,18 @@ def chat():
             "timestamp": datetime.now().isoformat(),
             "rag": {
                 "enabled": rag_enabled,
+                "gcp_enabled": GCP_RAG_ENABLED and gcp_rag.is_enabled(),
+                "system_used": rag_system_used,  # 실제 사용된 RAG 시스템
                 "hits": rag_hits_count,
                 "used": rag_hits_count > 0,
+                "success": rag_hits_count > 0,  # RAG 성공 여부
+                "fallback_reason": rag_debug_info.get('fallback_reason'),  # 폴백 이유
                 "top_k": RAG_TOP_K,
                 "snippet_max_chars": RAG_SNIPPET_MAX_CHARS,
                 "total_max_chars": RAG_TOTAL_MAX_CHARS,
-                "used_chars": rag_used_chars
+                "used_chars": rag_used_chars,
+                "debug_info": rag_debug_info,
+                "user_message": rag_debug_info.get('fallback_reason') if rag_hits_count == 0 else None
             },
             "websearch_enabled": GEMINI_WEBSEARCH_ENABLED
         })
@@ -595,12 +729,153 @@ def get_recipe(item_name):
             "error": str(e)
         }), 500
 
+# =============== GCP RAG 관리 엔드포인트 ===============
+
+@app.route('/gcp-rag/build', methods=['POST'])
+def gcp_rag_build():
+    """GCP RAG 인덱스 구축"""
+    try:
+        data = request.get_json(force=True) or {}
+        modpack_name = data.get('modpack_name', '').strip()
+        modpack_version = data.get('modpack_version', '1.0.0').strip()
+        modpack_path = data.get('modpack_path', '').strip()
+        
+        if not all([modpack_name, modpack_version, modpack_path]):
+            return jsonify({
+                "success": False, 
+                "error": "modpack_name, modpack_version, modpack_path 모두 필요"
+            }), 400
+        
+        if not gcp_rag.is_enabled():
+            return jsonify({
+                "success": False,
+                "error": "GCP RAG 시스템이 비활성화되어 있습니다. GCP_PROJECT_ID 환경변수와 인증 설정을 확인하세요."
+            }), 503
+        
+        # 비동기적으로 인덱스 구축 (실제 환경에서는 Celery 등 사용 권장)
+        result = gcp_rag.build_modpack_index(modpack_name, modpack_version, modpack_path)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/gcp-rag/search', methods=['POST'])
+def gcp_rag_search():
+    """GCP RAG 검색 (디버그용 - 실제 검색 결과 확인)"""
+    try:
+        data = request.get_json(force=True) or {}
+        query = data.get('query', '').strip()
+        modpack_name = data.get('modpack_name', '').strip()
+        modpack_version = data.get('modpack_version', '1.0.0').strip()
+        top_k = min(data.get('top_k', 5), 20)  # 최대 20개
+        min_score = max(0.0, min(1.0, data.get('min_score', 0.7)))
+        
+        if not all([query, modpack_name, modpack_version]):
+            return jsonify({
+                "success": False,
+                "error": "query, modpack_name, modpack_version 모두 필요"
+            }), 400
+        
+        if not gcp_rag.is_enabled():
+            return jsonify({
+                "success": False,
+                "error": "GCP RAG 시스템이 비활성화되어 있습니다."
+            }), 503
+        
+        results = gcp_rag.search_documents(
+            query=query,
+            modpack_name=modpack_name,
+            modpack_version=modpack_version,
+            top_k=top_k,
+            min_score=min_score
+        )
+        
+        return jsonify({
+            "success": True,
+            "query": query,
+            "modpack": f"{modpack_name} v{modpack_version}",
+            "results_count": len(results),
+            "results": results,
+            "search_params": {
+                "top_k": top_k,
+                "min_score": min_score
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/gcp-rag/modpacks', methods=['GET'])
+def gcp_rag_modpacks():
+    """등록된 모드팩 목록"""
+    try:
+        if not gcp_rag.is_enabled():
+            return jsonify({
+                "success": False,
+                "error": "GCP RAG 시스템이 비활성화되어 있습니다."
+            }), 503
+        
+        modpacks = gcp_rag.get_modpack_list()
+        return jsonify({
+            "success": True,
+            "modpacks": modpacks,
+            "count": len(modpacks)
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/gcp-rag/delete', methods=['DELETE'])
+def gcp_rag_delete():
+    """GCP RAG 인덱스 삭제"""
+    try:
+        data = request.get_json(force=True) or {}
+        modpack_name = data.get('modpack_name', '').strip()
+        modpack_version = data.get('modpack_version', '1.0.0').strip()
+        
+        if not all([modpack_name, modpack_version]):
+            return jsonify({
+                "success": False,
+                "error": "modpack_name, modpack_version 모두 필요"
+            }), 400
+        
+        if not gcp_rag.is_enabled():
+            return jsonify({
+                "success": False,
+                "error": "GCP RAG 시스템이 비활성화되어 있습니다."
+            }), 503
+        
+        success = gcp_rag.delete_modpack_index(modpack_name, modpack_version)
+        return jsonify({
+            "success": success,
+            "message": f"{modpack_name} v{modpack_version} 인덱스 삭제 {'완료' if success else '실패'}"
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/gcp-rag/status', methods=['GET'])
+def gcp_rag_status():
+    """GCP RAG 시스템 상태"""
+    try:
+        return jsonify({
+            "success": True,
+            "gcp_rag_enabled": GCP_RAG_ENABLED,
+            "gcp_rag_available": gcp_rag.is_enabled(),
+            "project_id": gcp_rag.project_id if gcp_rag.is_enabled() else None,
+            "location": gcp_rag.location if gcp_rag.is_enabled() else None,
+            "local_rag_enabled": rag_enabled
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == '__main__':
     print("🚀 마인크래프트 AI 백엔드 시작 중...")
     print(f"📊 현재 활성 모델: {current_model if current_model else '없음'}")
     print(f"🔑 Google API (Gemini): {'✅' if gemini_client else '❌'}")
     print(f"🔑 OpenAI API: {'✅' if openai_client else '❌'}")  
     print(f"🔑 Anthropic API (Claude): {'✅' if claude_client else '❌'}")
+    print(f"🔗 GCP RAG: {'✅' if GCP_RAG_ENABLED and gcp_rag.is_enabled() else '❌'}")
     
     if current_model:
         print(f"🎯 주 사용 모델: {current_model}")
@@ -609,6 +884,15 @@ if __name__ == '__main__':
     else:
         print("⚠️ 경고: 사용 가능한 AI 모델이 없습니다!")
         print("💡 최소한 Google API 키(Gemini)를 설정하는 것을 권장합니다.")
+    
+    if GCP_RAG_ENABLED and gcp_rag.is_enabled():
+        print("🎯 GCP RAG 활성화됨 - 모드팩별 벡터 검색 가능")
+        modpack_count = len(gcp_rag.get_modpack_list())
+        print(f"📦 등록된 모드팩: {modpack_count}개")
+    elif GCP_RAG_ENABLED:
+        print("⚠️ GCP RAG 설정 불완전 - GCP_PROJECT_ID와 인증 확인 필요")
+    else:
+        print("📝 GCP RAG 비활성화 - 로컬 RAG만 사용")
     
     print("=" * 60)
     init_rag()

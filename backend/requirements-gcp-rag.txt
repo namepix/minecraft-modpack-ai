@@ -1,0 +1,11 @@
+# GCP RAG 시스템용 추가 의존성
+# 이 파일은 GCP RAG 기능을 사용할 때만 설치하세요
+# 설치: pip install -r requirements-gcp-rag.txt
+
+# GCP 라이브러리
+google-cloud-firestore==2.13.1
+google-cloud-aiplatform==1.38.0
+vertexai==1.38.0
+
+# 임베딩 및 벡터 검색 (백업용)
+numpy==1.26.4
