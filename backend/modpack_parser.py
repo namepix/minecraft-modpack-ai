@@ -142,7 +142,8 @@ def _collect_kubejs(kubejs_dir: str) -> Tuple[List[Dict[str, Any]], int]:
             try:
                 with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read(2000)
-                text = f"kubejs script: {os.path.relpath(fpath, kubejs_dir)} => {content[:300].replace('\n',' ') }"
+                content_clean = content[:300].replace('\n', ' ')
+                text = f"kubejs script: {os.path.relpath(fpath, kubejs_dir)} => {content_clean}"
                 docs.append({'type': 'kubejs', 'source': fpath, 'text': text})
                 count += 1
             except Exception:

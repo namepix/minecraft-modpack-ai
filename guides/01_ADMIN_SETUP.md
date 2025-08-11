@@ -260,6 +260,9 @@ pip install -r requirements.txt
 - **anthropic**: Claude AI API 클라이언트
 - **requests**: HTTP 통신 라이브러리
 - **flask-cors**: 크로스 오리진 요청 처리
+- **sentence-transformers**: RAG 벡터 검색 시스템
+- **google-cloud-firestore**: GCP RAG 데이터베이스
+- **vertexai**: Google Vertex AI (고급 RAG 기능)
 
 #### **3-4. 백엔드 테스트**
 ```bash
@@ -585,6 +588,10 @@ OPENAI_API_KEY=sk-your-openai-api-key-here
 # Anthropic Claude API Key (백업용)
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
 
+# GCP RAG 시스템 설정 (고급 기능)
+GCP_PROJECT_ID=your-gcp-project-id
+GCS_BUCKET_NAME=your-gcs-bucket-name
+
 # 서버 설정
 PORT=5000
 DEBUG=false
@@ -626,12 +633,17 @@ echo "   sudo systemctl restart mc-ai-backend"
 echo ""
 ```
 
-#### **8-3. API 키 설정 도움말**
+#### **8-3. API 키 및 GCP 설정 도움말**
 ```bash
 echo "💡 API 키 설정 팁:"
 echo "   - GOOGLE_API_KEY=your-key-here 형태로 입력"
 echo "   - 키 앞뒤에 공백이나 따옴표 없이 입력"
 echo "   - 여러 API 키를 설정하면 자동으로 백업 사용"
+echo ""
+echo "🏗️ GCP RAG 시스템 설정 (고급 기능):"
+echo "   - GCP_PROJECT_ID=your-gcp-project-id : GCP 프로젝트 ID"
+echo "   - GCS_BUCKET_NAME=your-bucket-name : Cloud Storage 버킷명"
+echo "   - 설정하지 않으면 자동으로 로컬 RAG + 웹검색으로 작동"
 echo ""
 echo "💰 비용 제어 방법:"
 echo "   - GEMINI_WEBSEARCH_ENABLED=false : 웹검색 비활성화"

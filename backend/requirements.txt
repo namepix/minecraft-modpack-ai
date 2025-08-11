@@ -24,6 +24,11 @@ faiss-cpu==1.7.4
 tqdm==4.66.4
 numpy==1.26.4
 
+# GCP RAG 시스템 (기본 활성화)
+google-cloud-firestore==2.21.0
+google-cloud-aiplatform==1.71.1
+vertexai==1.71.1
+
 # 테스트
 pytest==7.4.3               # 단위 테스트
 pytest-mock==3.12.0         # Mock 테스트
