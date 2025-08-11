@@ -134,78 +134,702 @@ curl http://localhost:5000/health
 
 ---
 
-## 🔧 방법 2: 단계별 설치 (수정됨)
+## 🔧 방법 2: 단계별 설치 (상세 가이드)
 
-#### 1단계: 기본 도구 및 Java 21 설치
+**이 방법은 각 단계를 개별적으로 진행하면서 설치 과정을 이해하고 싶은 분들을 위한 가이드입니다.**
+
+---
+
+### 📋 **1단계: 시스템 환경 준비**
+
+#### **1-1. 기본 도구 설치**
 ```bash
-# 시스템 패키지 업데이트 및 필수 도구 설치
+# 시스템 패키지 데이터베이스 업데이트
 sudo apt-get update
-sudo apt-get install -y git curl wget
 
-# Java 21 (Temurin) 설치
-sudo apt-get install -y temurin-21-jdk
+# 필수 도구 설치 (Git: 소스코드 다운로드, Curl: API 테스트, Wget: 파일 다운로드)
+sudo apt-get install -y git curl wget unzip
 ```
 
-#### 2단계: 프로젝트 클론
+**설명**: 
+- `sudo apt-get update`: 시스템의 패키지 목록을 최신으로 업데이트합니다
+- `git`: GitHub에서 프로젝트를 다운로드하기 위해 필요
+- `curl`: 백엔드 API 테스트에 사용
+- `wget`, `unzip`: Gradle 다운로드 및 압축 해제에 사용
+
+#### **1-2. Java 21 설치**
 ```bash
-# GitHub에서 프로젝트 클론
+# Java 21 설치 (NeoForge 1.20.1+ 필수 요구사항)
+sudo apt-get install -y openjdk-21-jdk
+
+# Java 버전 확인
+java -version
+```
+
+**설명**: 
+- **왜 Java 21인가?** NeoForge 1.20.1과 Fabric 1.20.1은 Java 21이 필수입니다
+- **설치 확인**: `java -version` 명령어에서 "21.x.x" 버전이 표시되어야 합니다
+
+#### **1-3. Python 3.9+ 설치 및 확인**
+```bash
+# Python 3과 가상환경 모듈 설치
+sudo apt-get install -y python3 python3-pip python3-venv
+
+# Python 버전 확인 (3.9 이상이어야 함)
+python3 --version
+```
+
+**설명**: 
+- **AI 백엔드 요구사항**: Python 3.9+가 필요합니다
+- `python3-venv`: 가상환경 생성을 위해 필요한 모듈
+
+---
+
+### 📁 **2단계: 프로젝트 다운로드**
+
+```bash
+# 홈 디렉토리로 이동 (~/로도 가능)
+cd $HOME
+
+# GitHub에서 프로젝트 전체 다운로드
 git clone https://github.com/namepix/minecraft-modpack-ai.git
+
+# 프로젝트 디렉토리로 이동
 cd minecraft-modpack-ai
+
+# 현재 위치 확인
+pwd
 ```
 
-#### 3단계: NeoForge 모드 빌드
+**설명**: 
+- `cd $HOME`: 사용자 홈 디렉토리로 이동 (보통 /home/username)
+- `git clone`: GitHub 저장소의 모든 파일을 로컬로 복사
+- **예상 결과**: `/home/username/minecraft-modpack-ai` 폴더가 생성됨
+
+---
+
+### 🐍 **3단계: AI 백엔드 설치 (RAG 시스템 포함)**
+
+**RAG (Retrieval-Augmented Generation) 시스템이란?**  
+AI가 답변할 때 외부 지식(웹 검색, 문서)을 참조하여 더 정확하고 최신의 정보를 제공하는 시스템입니다.
+
+#### **3-1. 백엔드 디렉토리로 이동**
 ```bash
-# 모드 디렉토리로 이동
+# 백엔드 폴더로 이동
+cd backend
+
+# 백엔드 구성 파일들 확인
+ls -la
+```
+
+**예상 파일들**: 
+- `app.py` : Flask 웹 서버 메인 파일
+- `requirements.txt` : Python 패키지 의존성 목록
+- `rag/` : RAG 시스템 관련 코드
+
+#### **3-2. Python 가상환경 생성**
+```bash
+# 가상환경 생성 (독립적인 Python 환경)
+python3 -m venv venv
+
+# 가상환경 활성화
+source venv/bin/activate
+
+# 가상환경 활성화 확인 (프롬프트 앞에 (venv)가 표시됨)
+which python3
+```
+
+**왜 가상환경이 필요한가?**
+- 시스템 Python과 분리하여 패키지 충돌 방지
+- 프로젝트별로 다른 버전의 라이브러리 사용 가능
+- 시스템 안정성 보장
+
+#### **3-3. AI 라이브러리 설치**
+```bash
+# pip 업그레이드 (최신 패키지 설치 도구)
+pip install --upgrade pip
+
+# requirements.txt에 정의된 모든 패키지 설치
+pip install -r requirements.txt
+```
+
+**주요 설치되는 라이브러리들**:
+- **Flask**: 웹 서버 프레임워크
+- **google-genai**: Google Gemini AI API 클라이언트 (최신 통합 SDK)
+- **openai**: OpenAI GPT API 클라이언트  
+- **anthropic**: Claude AI API 클라이언트
+- **requests**: HTTP 통신 라이브러리
+- **flask-cors**: 크로스 오리진 요청 처리
+
+#### **3-4. 백엔드 테스트**
+```bash
+# Flask 애플리케이션 구문 검사
+python3 -c "import app; print('✅ 백엔드 구문 검사 성공')"
+
+# 프로젝트 루트로 복귀
+cd ..
+```
+
+---
+
+### ⚔️ **4단계: NeoForge 모드 빌드**
+
+**NeoForge란?**  
+MinecraftForge의 후속 프로젝트로, Java로 Minecraft 모드를 만들 수 있게 해주는 플랫폼입니다.
+
+#### **4-1. NeoForge 모드 폴더로 이동**
+```bash
+# NeoForge 모드 소스코드 디렉토리로 이동
 cd minecraft_mod
 
-# Gradle Wrapper 생성 (프로젝트에 맞는 Gradle 버전 설정)
-# 참고: 시스템에 설치된 gradle이 오래되었을 수 있으므로, 이 방법이 가장 안정적입니다.
-gradle wrapper --gradle-version 8.8 --distribution-type all
+# 프로젝트 구조 확인
+ls -la
+```
 
-# Gradle Wrapper를 사용하여 모드 빌드 (이제 ./gradlew 사용)
-# 이 명령은 필요한 모든 파일을 다운로드하고 모드를 컴파일합니다.
+**예상 파일들**: 
+- `build.gradle` : Gradle 빌드 설정 파일
+- `src/main/java/` : Java 소스코드
+- `src/main/resources/` : 리소스 파일 (모드 메타데이터 등)
+
+#### **4-2. Gradle 빌드 도구 준비**
+
+**Gradle이란?**  
+Java 프로젝트 빌드 자동화 도구입니다. 소스코드를 컴파일하고 JAR 파일을 생성합니다.
+
+```bash
+# Gradle Wrapper가 있는지 확인
+if [ ! -f "gradlew" ]; then
+    echo "Gradle Wrapper를 생성합니다..."
+    
+    # 최신 Gradle 다운로드 (NeoForge 호환 버전)
+    wget -q https://services.gradle.org/distributions/gradle-8.8-bin.zip -O /tmp/gradle-8.8-bin.zip
+    
+    # 임시 디렉토리에 압축 해제
+    unzip -q /tmp/gradle-8.8-bin.zip -d /tmp
+    
+    # Gradle Wrapper 생성 (프로젝트에 특화된 Gradle 환경)
+    /tmp/gradle-8.8/bin/gradle wrapper --gradle-version 8.8 --distribution-type all
+    
+    # 임시 파일 정리
+    rm -rf /tmp/gradle-8.8 /tmp/gradle-8.8-bin.zip
+    
+    echo "✅ Gradle Wrapper 생성 완료"
+else
+    echo "✅ Gradle Wrapper 이미 존재"
+fi
+
+# Gradle Wrapper에 실행 권한 부여
+chmod +x ./gradlew
+```
+
+**Gradle Wrapper의 장점**:
+- 프로젝트별로 정확한 Gradle 버전 사용
+- 시스템에 Gradle이 설치되지 않아도 작동
+- 팀 개발 시 환경 통일성 보장
+
+#### **4-3. NeoForge 모드 컴파일**
+```bash
+# 이전 빌드 결과물 정리
+./gradlew clean
+
+# NeoForge 모드 빌드 시작
+echo "🔨 NeoForge 모드 빌드 중... (최대 5-10분 소요)"
 ./gradlew build
 ```
-- **성공 시**: `minecraft_mod/build/libs/modpackai-1.0.0.jar` 와 같은 파일이 생성됩니다.
-- **오류 발생 시**: Java 버전이 21이 맞는지, `build.gradle` 파일에 오타가 없는지 확인하세요.
 
-#### 4단계: AI 백엔드 및 전체 설치
-- 모드 빌드가 성공적으로 완료되었다면, 이제 전체 자동 설치를 진행할 수 있습니다.
+**빌드 과정 설명**:
+1. **의존성 다운로드**: NeoForge API, Minecraft 라이브러리 다운로드
+2. **소스코드 컴파일**: Java 코드를 바이트코드로 변환
+3. **리소스 패키징**: 모드 메타데이터, 텍스처 등을 JAR에 포함
+4. **JAR 파일 생성**: 완성된 모드 파일 생성
+
+#### **4-4. 빌드 결과 확인**
 ```bash
-# 프로젝트 루트 디렉토리로 이동
+# 빌드 결과물 디렉토리 확인
+ls -la build/libs/
+
+# 모드 JAR 파일 자동 탐지
+BUILT_MOD=$(find build/libs -name "modpackai-*.jar" | head -n1)
+
+if [ -n "$BUILT_MOD" ] && [ -f "$BUILT_MOD" ]; then
+    echo "✅ NeoForge 모드 빌드 성공!"
+    echo "   파일: $BUILT_MOD"
+    echo "   크기: $(ls -lh "$BUILT_MOD" | awk '{print $5}')"
+else
+    echo "❌ 모드 빌드 실패"
+    echo "   build/libs/ 디렉토리에서 modpackai-*.jar 파일을 찾을 수 없습니다"
+    exit 1
+fi
+
+# 프로젝트 루트로 복귀
 cd ..
-
-# 전체 설치 스크립트 실행
-# 이 스크립트는 백엔드 설정, 모드 자동 배포, 서비스 등록을 모두 처리합니다.
-chmod +x install_mod.sh
-./install_mod.sh
 ```
 
-#### 5단계: API 키 설정 및 서비스 재시작
-- 설치 마지막 단계에서 안내되는 `.env` 파일에 API 키를 설정합니다.
+---
+
+### 🎯 **5단계: Fabric 모드 빌드 (듀얼 모드로더 지원)**
+
+**Fabric이란?**  
+NeoForge의 대안으로, 더 가벼우고 빠른 모드 로딩을 제공하는 모드 플랫폼입니다.
+
+#### **5-1. Fabric 모드 빌드 (선택사항)**
 ```bash
-# AI 백엔드 환경 설정 파일 열기
-nano ~/minecraft-ai-backend/.env
-
-# 파일 내용에 API 키 추가
-# GOOGLE_API_KEY=your-google-api-key-here
-
-# 설정 후 서비스를 재시작하여 변경사항 적용
-sudo systemctl restart mc-ai-backend
+# Fabric 모드 디렉토리가 있는지 확인
+if [ -d "minecraft_fabric_mod" ]; then
+    echo "🧵 Fabric 모드도 함께 빌드합니다..."
+    cd minecraft_fabric_mod
+    
+    # Fabric 모드 Gradle Wrapper 준비
+    if [ ! -f "gradlew" ]; then
+        gradle wrapper --gradle-version 8.8 --distribution-type all
+    fi
+    
+    chmod +x ./gradlew
+    
+    # Fabric 모드 빌드
+    ./gradlew clean build
+    
+    # 빌드 결과 확인
+    FABRIC_JAR=$(find build/libs -name "modpackai-fabric-*.jar" | head -n1)
+    if [ -f "$FABRIC_JAR" ]; then
+        echo "✅ Fabric 모드 빌드 성공: $FABRIC_JAR"
+    fi
+    
+    cd ..
+else
+    echo "ℹ️ Fabric 모드 디렉토리가 없습니다. NeoForge만 사용합니다."
+fi
 ```
 
-#### 6단계: 설치 확인
+#### **5-2. 통합 빌드 스크립트 사용 (권장)**
 ```bash
-# 백엔드 서비스 상태 확인
-sudo systemctl status mc-ai-backend
-
-# 모드가 각 모드팩에 잘 설치되었는지 확인
-ls ~/*/mods/modpackai-*.jar
-
-# API 상태 확인
-curl http://localhost:5000/health
+# 모든 모드를 한 번에 빌드하는 스크립트 실행
+chmod +x build_all_mods.sh
+./build_all_mods.sh
 ```
-- 모든 명령이 오류 없이 실행되면 설치가 완료된 것입니다. 이제 각 모드팩 서버를 시작하여 게임 내에서 AI를 사용할 수 있습니다.
+
+**이 스크립트가 수행하는 작업**:
+- NeoForge 모드와 Fabric 모드 순차적 빌드
+- 빌드 결과물을 `build_output/` 폴더에 정리
+- 각 모드 파일의 크기와 위치 정보 제공
+
+---
+
+### 🔧 **6단계: 백엔드 서비스 설정**
+
+#### **6-1. 백엔드 파일 배포**
+```bash
+# 홈 디렉토리에 백엔드 전용 폴더 생성
+BACKEND_DIR="$HOME/minecraft-ai-backend"
+mkdir -p "$BACKEND_DIR"
+
+# 백엔드 파일들을 전용 폴더로 복사 (가상환경 제외)
+rsync -a --exclude 'venv' backend/ "$BACKEND_DIR/"
+
+echo "✅ 백엔드 파일 배포 완료: $BACKEND_DIR"
+```
+
+#### **6-2. 프로덕션 가상환경 생성**
+```bash
+# 백엔드 디렉토리로 이동
+cd "$BACKEND_DIR"
+
+# 프로덕션용 가상환경 생성
+python3 -m venv venv
+
+# 가상환경 활성화
+source venv/bin/activate
+
+# 의존성 설치
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 가상환경 비활성화
+deactivate
+
+echo "✅ 프로덕션 가상환경 설정 완료"
+```
+
+#### **6-3. systemd 서비스 등록**
+
+**systemd란?**  
+Linux 시스템의 서비스 관리자입니다. 백엔드를 자동으로 시작하고 재시작하게 해줍니다.
+
+```bash
+# systemd 서비스 파일 생성
+sudo tee /etc/systemd/system/mc-ai-backend.service > /dev/null << EOF
+[Unit]
+Description=Minecraft Modpack AI Backend
+Documentation=https://github.com/namepix/minecraft-modpack-ai
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+Group=$USER
+WorkingDirectory=$BACKEND_DIR
+ExecStart=$BACKEND_DIR/venv/bin/python app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# 환경 변수
+Environment=PYTHONUNBUFFERED=1
+Environment=FLASK_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "✅ systemd 서비스 파일 생성 완료"
+```
+
+#### **6-4. 서비스 등록 및 활성화**
+```bash
+# systemd 설정 다시 로드
+sudo systemctl daemon-reload
+
+# 서비스 부팅시 자동 시작 설정
+sudo systemctl enable mc-ai-backend
+
+# 서비스 등록 확인
+systemctl is-enabled mc-ai-backend
+
+echo "✅ 백엔드 서비스 등록 완료"
+```
+
+---
+
+### 🗂️ **7단계: 모드팩에 모드 자동 배포**
+
+#### **7-1. NeoForge 모드팩 자동 감지**
+```bash
+echo "🔍 설치 가능한 NeoForge 모드팩을 찾는 중..."
+
+# 모드팩 디렉토리들을 배열로 수집
+declare -a NEOFORGE_MODPACKS
+while IFS= read -r -d '' mods_dir; do
+    modpack_dir=$(dirname "$mods_dir")
+    modpack_name=$(basename "$modpack_dir")
+    
+    # NeoForge 모드팩인지 확인
+    if ls "$modpack_dir"/neoforge-*.jar >/dev/null 2>&1 || \
+       [ -d "$modpack_dir/libraries" ] && grep -Rqi "neoforge" "$modpack_dir/libraries" 2>/dev/null; then
+        NEOFORGE_MODPACKS+=("$mods_dir|$modpack_name")
+        echo "✅ 발견: $modpack_name"
+    else
+        echo "⏭️ 건너뜀: $modpack_name (NeoForge 아님)"
+    fi
+done < <(find "$HOME" -maxdepth 2 -type d -name "mods" -print0)
+
+echo "📊 총 ${#NEOFORGE_MODPACKS[@]}개 NeoForge 모드팩 발견"
+```
+
+#### **7-2. 모드 자동 설치**
+```bash
+# 빌드된 NeoForge 모드 파일 경로
+NEOFORGE_MOD_PATH="minecraft_mod/build/libs/$(ls minecraft_mod/build/libs/modpackai-*.jar | head -n1 | xargs basename)"
+
+if [ ! -f "$NEOFORGE_MOD_PATH" ]; then
+    echo "❌ NeoForge 모드 파일을 찾을 수 없습니다: $NEOFORGE_MOD_PATH"
+    exit 1
+fi
+
+# 각 모드팩에 모드 설치
+INSTALLED_COUNT=0
+for modpack_info in "${NEOFORGE_MODPACKS[@]}"; do
+    IFS='|' read -r mods_dir modpack_name <<< "$modpack_info"
+    
+    echo "📦 $modpack_name에 모드 설치 중..."
+    
+    # 기존 ModpackAI 모드 제거 (업데이트)
+    rm -f "$mods_dir"/modpackai-*.jar
+    
+    # 새 모드 복사
+    cp "$NEOFORGE_MOD_PATH" "$mods_dir/"
+    
+    # 설치 확인
+    if ls "$mods_dir"/modpackai-*.jar >/dev/null 2>&1; then
+        echo "✅ $modpack_name 설치 완료"
+        ((INSTALLED_COUNT++))
+    else
+        echo "❌ $modpack_name 설치 실패"
+    fi
+done
+
+echo "📊 총 $INSTALLED_COUNT개 모드팩에 모드 설치 완료"
+```
+
+---
+
+### 🔑 **8단계: API 키 설정 (필수)**
+
+#### **8-1. 환경 설정 파일 준비**
+```bash
+# 백엔드 디렉토리로 이동
+cd "$HOME/minecraft-ai-backend"
+
+# 환경 설정 파일 생성 (env.example 복사)
+if [ -f "../env.example" ]; then
+    cp "../env.example" .env
+elif [ ! -f ".env" ]; then
+    # 기본 .env 파일 생성
+    cat > .env << 'EOF'
+# Google Gemini API Key (권장 - 웹검색 지원)
+GOOGLE_API_KEY=your-google-api-key-here
+
+# OpenAI API Key (백업용)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Anthropic Claude API Key (백업용)
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
+
+# 서버 설정
+PORT=5000
+DEBUG=false
+FLASK_ENV=production
+
+# RAG 및 웹검색 설정
+GEMINI_WEBSEARCH_ENABLED=true
+SEARCH_RESULTS_LIMIT=5
+MAX_TOKENS_PER_REQUEST=4000
+EOF
+fi
+
+echo "✅ 환경 설정 파일 생성: $HOME/minecraft-ai-backend/.env"
+```
+
+#### **8-2. Google Gemini API 키 발급 가이드**
+
+**Google Gemini API 키가 권장되는 이유**:
+- **무료 할당량**: 월 60회 무료 요청
+- **웹검색 지원**: 실시간 인터넷 정보 검색 가능
+- **한국어 지원**: 우수한 한국어 이해도
+- **모드팩 특화**: 마인크래프트 모드 정보에 최적화
+
+```bash
+echo ""
+echo "🌟 Google Gemini API 키 발급 방법:"
+echo "   1. https://makersuite.google.com/app/apikey 접속"
+echo "   2. Google 계정으로 로그인"
+echo "   3. 'Create API key' 버튼 클릭"
+echo "   4. 프로젝트 선택 또는 새 프로젝트 생성"
+echo "   5. API 키 복사"
+echo "   6. 아래 명령어로 API 키 설정:"
+echo ""
+echo "📝 API 키 설정 명령어:"
+echo "   nano $HOME/minecraft-ai-backend/.env"
+echo ""
+echo "🔧 설정 후 다음 명령어로 서비스 재시작:"
+echo "   sudo systemctl restart mc-ai-backend"
+echo ""
+```
+
+#### **8-3. API 키 설정 도움말**
+```bash
+echo "💡 API 키 설정 팁:"
+echo "   - GOOGLE_API_KEY=your-key-here 형태로 입력"
+echo "   - 키 앞뒤에 공백이나 따옴표 없이 입력"
+echo "   - 여러 API 키를 설정하면 자동으로 백업 사용"
+echo ""
+echo "💰 비용 제어 방법:"
+echo "   - GEMINI_WEBSEARCH_ENABLED=false : 웹검색 비활성화"
+echo "   - MAX_TOKENS_PER_REQUEST=2000 : 토큰 사용량 제한"
+echo ""
+```
+
+---
+
+### 🚀 **9단계: 서비스 시작 및 검증**
+
+#### **9-1. 백엔드 서비스 시작**
+```bash
+echo "🚀 백엔드 서비스를 시작합니다..."
+
+# 서비스 시작
+sudo systemctl start mc-ai-backend
+
+# 서비스 시작 대기
+sleep 5
+
+# 서비스 상태 확인
+if sudo systemctl is-active --quiet mc-ai-backend; then
+    echo "✅ 백엔드 서비스 성공적으로 시작됨"
+    
+    # 서비스 상태 상세 정보
+    sudo systemctl status mc-ai-backend --no-pager -l
+else
+    echo "❌ 백엔드 서비스 시작 실패"
+    echo "📋 오류 로그:"
+    sudo journalctl -u mc-ai-backend -n 20 --no-pager
+    echo ""
+    echo "🔧 해결 방법:"
+    echo "   1. API 키가 올바르게 설정되었는지 확인"
+    echo "   2. 방화벽에서 포트 5000 허용 확인"
+    echo "   3. Python 의존성 재설치"
+fi
+```
+
+#### **9-2. API 연결 테스트**
+```bash
+echo "🧪 API 연결 테스트 중..."
+
+# 백엔드 준비 대기
+sleep 3
+
+# Health Check 테스트
+echo "1. 기본 연결 테스트..."
+if curl -s --fail http://localhost:5000/health > /dev/null; then
+    API_RESPONSE=$(curl -s http://localhost:5000/health)
+    echo "✅ API 연결 성공: $API_RESPONSE"
+else
+    echo "❌ API 연결 실패"
+    echo "   URL: http://localhost:5000/health"
+    echo "   포트 5000이 열려있는지 확인하세요"
+fi
+
+# AI 기능 테스트 (API 키가 설정된 경우)
+echo "2. AI 기능 테스트..."
+AI_TEST_RESPONSE=$(curl -s -X POST http://localhost:5000/chat \
+    -H "Content-Type: application/json" \
+    -d '{"message":"테스트","modpack":"test"}' | head -c 100)
+
+if [[ "$AI_TEST_RESPONSE" == *"error"* ]]; then
+    echo "⚠️ AI 기능 테스트 실패 (API 키 설정 필요)"
+    echo "   API 키 설정 후 다시 테스트하세요"
+else
+    echo "✅ AI 기능 테스트 성공"
+fi
+```
+
+#### **9-3. 설치 검증 체크리스트**
+```bash
+echo ""
+echo "📋 설치 검증 체크리스트"
+echo "========================"
+
+# 1. 백엔드 서비스 상태
+if sudo systemctl is-active --quiet mc-ai-backend; then
+    echo "✅ 백엔드 서비스 실행 중"
+else
+    echo "❌ 백엔드 서비스 중지됨"
+fi
+
+# 2. 모드 파일 설치 확인
+MOD_COUNT=$(find "$HOME" -path "*/mods/modpackai-*.jar" | wc -l)
+if [ $MOD_COUNT -gt 0 ]; then
+    echo "✅ 모드 설치 확인: ${MOD_COUNT}개 모드팩"
+    find "$HOME" -path "*/mods/modpackai-*.jar" -exec echo "   - {}" \;
+else
+    echo "❌ 설치된 모드를 찾을 수 없음"
+fi
+
+# 3. API 접근성
+if curl -s --fail http://localhost:5000/health > /dev/null; then
+    echo "✅ API 서버 접근 가능"
+else
+    echo "❌ API 서버 접근 불가"
+fi
+
+# 4. 환경 설정 파일
+if [ -f "$HOME/minecraft-ai-backend/.env" ]; then
+    echo "✅ 환경 설정 파일 존재"
+    if grep -q "your-.*-key-here" "$HOME/minecraft-ai-backend/.env"; then
+        echo "⚠️ API 키 설정 필요"
+    else
+        echo "✅ API 키 설정 완료"
+    fi
+else
+    echo "❌ 환경 설정 파일 누락"
+fi
+
+echo ""
+echo "🎯 다음 단계:"
+if [ -f "$HOME/minecraft-ai-backend/.env" ] && ! grep -q "your-.*-key-here" "$HOME/minecraft-ai-backend/.env"; then
+    echo "   ✅ 설치 완료! NeoForge 모드팩 서버를 시작하세요"
+else
+    echo "   1. API 키 설정: nano $HOME/minecraft-ai-backend/.env"
+    echo "   2. 서비스 재시작: sudo systemctl restart mc-ai-backend"
+    echo "   3. NeoForge 모드팩 서버 시작"
+fi
+```
+
+---
+
+### 🎮 **10단계: 게임 내 테스트**
+
+#### **10-1. NeoForge 모드팩 서버 시작**
+```bash
+echo "🎮 게임 내 테스트 준비"
+echo "==================="
+echo ""
+echo "1. NeoForge 모드팩 서버를 시작하세요:"
+find "$HOME" -name "run.sh" -path "*/modpacks/*" | head -3 | while read -r run_script; do
+    modpack_name=$(basename $(dirname "$run_script"))
+    echo "   cd $(dirname "$run_script") && ./run.sh"
+done
+
+echo ""
+echo "2. 서버 로그에서 ModpackAI 로딩 확인:"
+echo "   [모드팩로그] ModpackAI 모드가 성공적으로 로드됨"
+
+echo ""
+echo "3. 게임 접속 후 다음 명령어 테스트:"
+echo "   /modpackai help     - 도움말 확인"
+echo "   /modpackai give     - AI 아이템 받기"
+echo "   /ai 안녕하세요       - AI에게 인사"
+echo ""
+```
+
+#### **10-2. 문제 해결 가이드**
+```bash
+echo "🔧 문제 해결 가이드"
+echo "=================="
+echo ""
+echo "❌ 모드가 로딩되지 않는 경우:"
+echo "   - Java 21+ 설치 확인: java -version"
+echo "   - 모드 파일 확인: ls ~/*/mods/modpackai-*.jar"
+echo "   - 서버 로그 확인: tail -f ~/모드팩명/logs/latest.log"
+echo ""
+echo "❌ AI 응답이 없는 경우:"
+echo "   - 백엔드 상태: sudo systemctl status mc-ai-backend"
+echo "   - API 키 확인: grep API_KEY ~/.minecraft-ai-backend/.env"
+echo "   - 연결 테스트: curl http://localhost:5000/health"
+echo ""
+echo "❌ 'Connection refused' 오류:"
+echo "   - 방화벽 확인: sudo ufw status"
+echo "   - 포트 사용: netstat -tlnp | grep :5000"
+echo "   - 서비스 재시작: sudo systemctl restart mc-ai-backend"
+echo ""
+```
+
+---
+
+### ✅ **단계별 설치 완료!**
+
+```bash
+echo ""
+echo "🎉 단계별 설치가 완료되었습니다!"
+echo "=============================="
+echo ""
+echo "📊 설치 요약:"
+echo "   ✅ Java 21+ 환경 준비"
+echo "   ✅ AI 백엔드 (RAG 시스템 포함) 설치"
+echo "   ✅ NeoForge 모드 빌드 및 배포"
+echo "   ✅ systemd 서비스 등록"
+echo "   ✅ 모드팩 자동 감지 및 설치"
+echo ""
+echo "🎯 사용 준비:"
+echo "   1. API 키가 설정되었다면 즉시 사용 가능"
+echo "   2. NeoForge 모드팩 서버에서 /ai 명령어 사용"
+echo "   3. AI 아이템으로 GUI 인터페이스 사용"
+echo ""
+echo "📞 지원:"
+echo "   - 문제 발생 시 위의 '문제 해결 가이드' 참조"
+echo "   - GitHub Issues: 추가 도움이 필요한 경우"
+echo ""
+```
 
 ---
 

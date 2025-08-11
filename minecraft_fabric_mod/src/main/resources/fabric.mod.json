@@ -1,0 +1,36 @@
+{
+    "schemaVersion": 1,
+    "id": "modpackai",
+    "version": "${version}",
+    "name": "Modpack AI Assistant",
+    "description": "AI-powered assistant for Minecraft modpacks with Gemini 2.5 Pro integration",
+    "authors": [
+        "ModpackAI Team"
+    ],
+    "contact": {
+        "homepage": "https://github.com/namepix/minecraft-modpack-ai",
+        "sources": "https://github.com/namepix/minecraft-modpack-ai"
+    },
+    "license": "MIT",
+    "icon": "assets/modpackai/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.modpackai.ModpackAIMod"
+        ],
+        "client": [
+            "com.modpackai.client.ModpackAIClientMod"
+        ]
+    },
+    "mixins": [
+    ],
+    "depends": {
+        "fabricloader": ">=0.14.0",
+        "minecraft": "~1.20.1",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {
+        "another-mod": "*"
+    }
+}

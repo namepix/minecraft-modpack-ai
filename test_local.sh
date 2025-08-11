@@ -48,14 +48,14 @@ record_test() {
 # 1. 시스템 환경 검증
 log_step "1. 시스템 환경 검증"
 
-log_test "Python 3.8+ 설치 확인"
-if python3 --version | grep -E "Python 3\.(8|9|10|11|12)" >/dev/null 2>&1; then
+log_test "Python 3.9+ 설치 확인"
+if python3 --version | grep -E "Python 3\.(9|10|11|12)" >/dev/null 2>&1; then
     PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
     log_success "Python $PYTHON_VERSION 확인됨"
-    record_test "Python 3.8+ 설치" "PASS"
+    record_test "Python 3.9+ 설치" "PASS"
 else
-    log_error "Python 3.8+ 필요"
-    record_test "Python 3.8+ 설치" "FAIL"
+    log_error "Python 3.9+ 필요"
+    record_test "Python 3.9+ 설치" "FAIL"
 fi
 
 log_test "Java 17+ 설치 확인"
