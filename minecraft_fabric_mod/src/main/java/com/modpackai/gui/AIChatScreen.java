@@ -1,11 +1,11 @@
 package com.modpackai.gui;
 
 import com.modpackai.ModpackAIMod;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.text.Text;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -15,12 +15,12 @@ import net.fabricmc.api.Environment;
  */
 @Environment(EnvType.CLIENT)
 public class AIChatScreen extends Screen {
-    private EditBox messageInput;
-    private Button sendButton;
+    private TextFieldWidget messageInput;
+    private ButtonWidget sendButton;
     private String lastResponse = "AI에게 질문해보세요!";
     
     public AIChatScreen() {
-        super(Component.literal("ModpackAI 채팅"));
+        super(Text.literal("ModpackAI 채팅"));
     }
     
     @Override
@@ -31,41 +31,41 @@ public class AIChatScreen extends Screen {
         int centerY = this.height / 2;
         
         // 메시지 입력 필드
-        this.messageInput = new EditBox(this.font, centerX - 150, centerY - 10, 300, 20, Component.literal("메시지 입력"));
+        this.messageInput = new TextFieldWidget(this.textRenderer, centerX - 150, centerY - 10, 300, 20, Text.literal("메시지 입력"));
         this.messageInput.setMaxLength(500);
-        this.messageInput.setHint(Component.literal("AI에게 질문을 입력하세요..."));
-        this.addRenderableWidget(this.messageInput);
+        this.messageInput.setPlaceholder(Text.literal("AI에게 질문을 입력하세요..."));
+        this.addDrawableChild(this.messageInput);
         
         // 전송 버튼
-        this.sendButton = Button.builder(Component.literal("전송"), this::onSendMessage)
-                .bounds(centerX - 50, centerY + 20, 100, 20)
+        this.sendButton = ButtonWidget.builder(Text.literal("전송"), this::onSendMessage)
+                .dimensions(centerX - 50, centerY + 20, 100, 20)
                 .build();
-        this.addRenderableWidget(this.sendButton);
+        this.addDrawableChild(this.sendButton);
         
         // 닫기 버튼
-        Button closeButton = Button.builder(Component.literal("닫기"), (button) -> this.onClose())
-                .bounds(centerX - 50, centerY + 50, 100, 20)
+        ButtonWidget closeButton = ButtonWidget.builder(Text.literal("닫기"), (button) -> this.close())
+                .dimensions(centerX - 50, centerY + 50, 100, 20)
                 .build();
-        this.addRenderableWidget(closeButton);
+        this.addDrawableChild(closeButton);
         
         // 입력 필드에 포커스
         this.setInitialFocus(this.messageInput);
     }
     
-    private void onSendMessage(Button button) {
-        String message = this.messageInput.getValue().trim();
+    private void onSendMessage(ButtonWidget button) {
+        String message = this.messageInput.getText().trim();
         if (message.isEmpty()) {
             return;
         }
         
         // 입력 필드 비우기
-        this.messageInput.setValue("");
+        this.messageInput.setText("");
         this.lastResponse = "처리 중...";
         
         // AI에게 질문 (비동기)
-        if (this.minecraft != null && this.minecraft.player != null) {
+        if (this.client != null && this.client.player != null) {
             ModpackAIMod.getInstance().getAIManager()
-                    .askAIAsync(this.minecraft.player.getStringUUID(), message, "Unknown Modpack")
+                    .askAIAsync(this.client.player.getUuidAsString(), message, "Unknown Modpack")
                     .thenAccept(response -> {
                         // 응답이 너무 길면 줄여서 표시
                         this.lastResponse = response.length() > 300 ? 
@@ -79,21 +79,19 @@ public class AIChatScreen extends Screen {
     }
     
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         // 배경 그리기
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        super.render(context, mouseX, mouseY, delta);
         
         // 제목 표시
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
         
         // AI 응답 표시 (여러 줄 지원)
         int responseY = this.height / 2 - 60;
         String[] lines = wrapText(this.lastResponse, 60); // 60자 기준으로 줄바꿈
         for (int i = 0; i < lines.length && i < 5; i++) { // 최대 5줄까지 표시
-            guiGraphics.drawCenteredString(this.font, lines[i], this.width / 2, responseY + (i * 12), 0xCCCCCC);
+            context.drawCenteredTextWithShadow(this.textRenderer, lines[i], this.width / 2, responseY + (i * 12), 0xCCCCCC);
         }
-        
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
     
     @Override
@@ -107,7 +105,7 @@ public class AIChatScreen extends Screen {
     }
     
     @Override
-    public boolean isPauseScreen() {
+    public boolean shouldPause() {
         return false; // 게임을 일시정지하지 않음
     }
     

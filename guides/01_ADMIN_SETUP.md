@@ -422,6 +422,10 @@ chmod +x build_all_mods.sh
 
 #### **6-1. 백엔드 파일 배포**
 ```bash
+# rsync 설치 (파일 동기화 도구)
+sudo apt-get update
+sudo apt-get install rsync -y
+
 # 홈 디렉토리에 백엔드 전용 폴더 생성
 BACKEND_DIR="$HOME/minecraft-ai-backend"
 mkdir -p "$BACKEND_DIR"
@@ -429,6 +433,14 @@ mkdir -p "$BACKEND_DIR"
 # 백엔드 파일들을 전용 폴더로 복사 (가상환경 제외)
 rsync -a --exclude 'venv' backend/ "$BACKEND_DIR/"
 
+echo "✅ 백엔드 파일 배포 완료: $BACKEND_DIR"
+```
+
+**rsync가 설치되어 있지 않은 경우 대체 방법:**
+```bash
+# 방법 2: cp 명령어 사용
+cp -r backend/ "$BACKEND_DIR/"
+rm -rf "$BACKEND_DIR/venv"
 echo "✅ 백엔드 파일 배포 완료: $BACKEND_DIR"
 ```
 
@@ -506,12 +518,14 @@ echo "✅ 백엔드 서비스 등록 완료"
 
 ### 🗂️ **7단계: 모드팩에 모드 자동 배포**
 
-#### **7-1. NeoForge 모드팩 자동 감지**
+#### **7-1. 모드팩 자동 감지 (NeoForge + Fabric)**
 ```bash
-echo "🔍 설치 가능한 NeoForge 모드팩을 찾는 중..."
+echo "🔍 설치 가능한 모드팩을 찾는 중..."
 
 # 모드팩 디렉토리들을 배열로 수집
 declare -a NEOFORGE_MODPACKS
+declare -a FABRIC_MODPACKS
+
 while IFS= read -r -d '' mods_dir; do
     modpack_dir=$(dirname "$mods_dir")
     modpack_name=$(basename "$modpack_dir")
@@ -520,48 +534,120 @@ while IFS= read -r -d '' mods_dir; do
     if ls "$modpack_dir"/neoforge-*.jar >/dev/null 2>&1 || \
        [ -d "$modpack_dir/libraries" ] && grep -Rqi "neoforge" "$modpack_dir/libraries" 2>/dev/null; then
         NEOFORGE_MODPACKS+=("$mods_dir|$modpack_name")
-        echo "✅ 발견: $modpack_name"
+        echo "🔨 NeoForge 발견: $modpack_name"
+    
+    # Fabric 모드팩인지 확인
+    elif find "$modpack_dir" -name "*fabric*loader*.jar" -o -name "*fabric*server*.jar" | grep -q . || \
+         [ -d "$modpack_dir/libraries" ] && grep -Rqi "fabric" "$modpack_dir/libraries" 2>/dev/null; then
+        FABRIC_MODPACKS+=("$mods_dir|$modpack_name")
+        echo "🧵 Fabric 발견: $modpack_name"
     else
-        echo "⏭️ 건너뜀: $modpack_name (NeoForge 아님)"
+        echo "⏭️ 건너뜀: $modpack_name (알 수 없는 모드로더)"
     fi
 done < <(find "$HOME" -maxdepth 2 -type d -name "mods" -print0)
 
-echo "📊 총 ${#NEOFORGE_MODPACKS[@]}개 NeoForge 모드팩 발견"
+echo "📊 발견된 모드팩:"
+echo "   - NeoForge: ${#NEOFORGE_MODPACKS[@]}개"
+echo "   - Fabric: ${#FABRIC_MODPACKS[@]}개"
 ```
 
-#### **7-2. 모드 자동 설치**
+#### **7-2. NeoForge 모드 자동 설치**
 ```bash
-# 빌드된 NeoForge 모드 파일 경로
-NEOFORGE_MOD_PATH="minecraft_mod/build/libs/$(ls minecraft_mod/build/libs/modpackai-*.jar | head -n1 | xargs basename)"
-
-if [ ! -f "$NEOFORGE_MOD_PATH" ]; then
-    echo "❌ NeoForge 모드 파일을 찾을 수 없습니다: $NEOFORGE_MOD_PATH"
-    exit 1
-fi
-
-# 각 모드팩에 모드 설치
-INSTALLED_COUNT=0
-for modpack_info in "${NEOFORGE_MODPACKS[@]}"; do
-    IFS='|' read -r mods_dir modpack_name <<< "$modpack_info"
+if [ ${#NEOFORGE_MODPACKS[@]} -gt 0 ]; then
+    echo ""
+    echo "🔨 NeoForge 모드 설치 시작..."
     
-    echo "📦 $modpack_name에 모드 설치 중..."
+    # 빌드된 NeoForge 모드 파일 경로
+    NEOFORGE_MOD_PATH="minecraft_mod/build/libs/$(ls minecraft_mod/build/libs/modpackai-*.jar | head -n1 | xargs basename)"
     
-    # 기존 ModpackAI 모드 제거 (업데이트)
-    rm -f "$mods_dir"/modpackai-*.jar
-    
-    # 새 모드 복사
-    cp "$NEOFORGE_MOD_PATH" "$mods_dir/"
-    
-    # 설치 확인
-    if ls "$mods_dir"/modpackai-*.jar >/dev/null 2>&1; then
-        echo "✅ $modpack_name 설치 완료"
-        ((INSTALLED_COUNT++))
+    if [ ! -f "$NEOFORGE_MOD_PATH" ]; then
+        echo "❌ NeoForge 모드 파일을 찾을 수 없습니다: $NEOFORGE_MOD_PATH"
     else
-        echo "❌ $modpack_name 설치 실패"
+        # 각 NeoForge 모드팩에 모드 설치
+        NEOFORGE_INSTALLED=0
+        for modpack_info in "${NEOFORGE_MODPACKS[@]}"; do
+            IFS='|' read -r mods_dir modpack_name <<< "$modpack_info"
+            
+            echo "📦 $modpack_name에 NeoForge 모드 설치 중..."
+            
+            # 기존 ModpackAI 모드 제거 (업데이트)
+            rm -f "$mods_dir"/modpackai-*.jar
+            
+            # 새 모드 복사
+            cp "$NEOFORGE_MOD_PATH" "$mods_dir/"
+            
+            # 설치 확인
+            if ls "$mods_dir"/modpackai-*.jar >/dev/null 2>&1; then
+                echo "✅ $modpack_name 설치 완료"
+                ((NEOFORGE_INSTALLED++))
+            else
+                echo "❌ $modpack_name 설치 실패"
+            fi
+        done
+        
+        echo "📊 NeoForge: $NEOFORGE_INSTALLED개 모드팩에 설치 완료"
     fi
-done
+else
+    echo "ℹ️ NeoForge 모드팩이 없습니다."
+fi
+```
 
-echo "📊 총 $INSTALLED_COUNT개 모드팩에 모드 설치 완료"
+#### **7-3. Fabric 모드 자동 설치**
+```bash
+if [ ${#FABRIC_MODPACKS[@]} -gt 0 ]; then
+    echo ""
+    echo "🧵 Fabric 모드 설치 시작..."
+    
+    # 빌드된 Fabric 모드 파일 경로
+    FABRIC_MOD_PATH="minecraft_fabric_mod/build/libs/$(ls minecraft_fabric_mod/build/libs/modpackai-fabric-*.jar | head -n1 | xargs basename)"
+    
+    if [ ! -f "$FABRIC_MOD_PATH" ]; then
+        echo "❌ Fabric 모드 파일을 찾을 수 없습니다: $FABRIC_MOD_PATH"
+    else
+        # 각 Fabric 모드팩에 모드 설치
+        FABRIC_INSTALLED=0
+        for modpack_info in "${FABRIC_MODPACKS[@]}"; do
+            IFS='|' read -r mods_dir modpack_name <<< "$modpack_info"
+            
+            echo "📦 $modpack_name에 Fabric 모드 설치 중..."
+            
+            # 기존 ModpackAI 모드 제거 (업데이트)
+            rm -f "$mods_dir"/modpackai-*.jar
+            
+            # 새 모드 복사
+            cp "$FABRIC_MOD_PATH" "$mods_dir/"
+            
+            # 설치 확인
+            if ls "$mods_dir"/modpackai-*.jar >/dev/null 2>&1; then
+                echo "✅ $modpack_name 설치 완료"
+                ((FABRIC_INSTALLED++))
+            else
+                echo "❌ $modpack_name 설치 실패"
+            fi
+        done
+        
+        echo "📊 Fabric: $FABRIC_INSTALLED개 모드팩에 설치 완료"
+    fi
+else
+    echo "ℹ️ Fabric 모드팩이 없습니다."
+fi
+```
+
+#### **7-4. 설치 완료 요약**
+```bash
+echo ""
+echo "🎉 모드 설치 완료!"
+echo "==================="
+echo "📊 설치 결과:"
+if [ ${#NEOFORGE_MODPACKS[@]} -gt 0 ]; then
+    echo "   🔨 NeoForge: ${NEOFORGE_INSTALLED:-0}개 모드팩"
+fi
+if [ ${#FABRIC_MODPACKS[@]} -gt 0 ]; then
+    echo "   🧵 Fabric: ${FABRIC_INSTALLED:-0}개 모드팩"
+fi
+echo ""
+echo "⚠️  중요: 모드가 적용되려면 각 모드팩 서버를 재시작해야 합니다!"
+echo "🎮 재시작 후 게임에서 /ai 명령어를 사용할 수 있습니다."
 ```
 
 ---

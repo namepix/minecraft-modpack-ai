@@ -7,8 +7,8 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,14 +17,14 @@ import org.slf4j.LoggerFactory;
 public class ModpackAIClientMod implements ClientModInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModpackAIClientMod.class);
     
-    private static KeyMapping aiGuiKey;
+    private static KeyBinding aiGuiKey;
     
     @Override
     public void onInitializeClient() {
         LOGGER.info("ModpackAI 클라이언트 초기화 시작");
         
         // 키 바인딩 등록
-        aiGuiKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        aiGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.modpackai.open_gui",
                 GLFW.GLFW_KEY_G,
                 "category.modpackai.general"
@@ -39,9 +39,9 @@ public class ModpackAIClientMod implements ClientModInitializer {
         LOGGER.info("ModpackAI 클라이언트 초기화 완료");
     }
     
-    private void onClientTick(Minecraft client) {
+    private void onClientTick(MinecraftClient client) {
         // AI GUI 키 처리
-        if (aiGuiKey.consumeClick()) {
+        while (aiGuiKey.wasPressed()) {
             // AI 채팅 스크린 열기
             if (client.player != null) {
                 LOGGER.info("AI 채팅 GUI 열기 요청");
@@ -50,7 +50,7 @@ public class ModpackAIClientMod implements ClientModInitializer {
         }
     }
     
-    public static KeyMapping getAiGuiKey() {
+    public static KeyBinding getAiGuiKey() {
         return aiGuiKey;
     }
 }

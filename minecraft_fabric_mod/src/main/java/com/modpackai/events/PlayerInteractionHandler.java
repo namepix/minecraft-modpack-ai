@@ -5,10 +5,11 @@ import com.modpackai.gui.AIChatScreen;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.minecraft.client.Minecraft;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.TypedActionResult;
+import net.minecraft.item.ItemStack;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,24 +23,24 @@ public class PlayerInteractionHandler {
     public static void register() {
         // 아이템 사용 이벤트 등록
         UseItemCallback.EVENT.register((player, world, hand) -> {
-            ItemStack itemStack = player.getItemInHand(hand);
+            ItemStack itemStack = player.getStackInHand(hand);
             
             // AI 아이템인지 확인
             if (isAIItem(itemStack)) {
                 LOGGER.info("플레이어 {}가 AI 아이템 사용", player.getName().getString());
                 
-                if (world.isClientSide) {
+                if (world.isClient) {
                     // 클라이언트 측에서 GUI 열기
                     openAIGui();
                 } else {
                     // 서버 측에서 안내 메시지 전송
-                    player.sendSystemMessage(Component.literal("§6[ModpackAI] §fAI 채팅창이 열렸습니다!"));
+                    player.sendMessage(Text.literal("§6[ModpackAI] §fAI 채팅창이 열렸습니다!"));
                 }
                 
-                return InteractionResult.SUCCESS;
+                return TypedActionResult.success(itemStack);
             }
             
-            return InteractionResult.PASS;
+            return TypedActionResult.pass(itemStack);
         });
         
         LOGGER.info("Fabric PlayerInteractionHandler 등록 완료");
@@ -66,7 +67,7 @@ public class PlayerInteractionHandler {
      */
     @Environment(EnvType.CLIENT)
     private static void openAIGui() {
-        Minecraft minecraft = Minecraft.getInstance();
+        MinecraftClient minecraft = MinecraftClient.getInstance();
         if (minecraft != null && minecraft.player != null) {
             minecraft.execute(() -> {
                 minecraft.setScreen(new AIChatScreen());
