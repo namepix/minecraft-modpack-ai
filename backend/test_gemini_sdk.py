@@ -6,18 +6,21 @@ Gemini 2.5 Pro SDK 테스트 스크립트
 
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 from google import genai
 from google.genai import types
 
 def test_gemini_sdk():
     """Gemini SDK 테스트"""
-    load_dotenv()
+    # 표준 환경변수 로드
+    env_file = Path.home() / "minecraft-ai-backend" / ".env"
+    load_dotenv(env_file)
     
     # API 키 확인
     api_key = os.getenv('GOOGLE_API_KEY')
     if not api_key:
         print("❌ GOOGLE_API_KEY가 설정되지 않았습니다.")
-        print("💡 .env 파일에 GOOGLE_API_KEY를 설정하세요.")
+        print("💡 ~/minecraft-ai-backend/.env 파일에 GOOGLE_API_KEY를 설정하세요.")
         return False
     
     try:

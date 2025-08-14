@@ -6,6 +6,7 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 from typing import List, Dict, Any
+from pathlib import Path
 
 # 새로운 Gemini SDK
 from google import genai
@@ -18,7 +19,71 @@ from modpack_parser import scan_modpack
 # GCP RAG 시스템
 from gcp_rag_system import gcp_rag
 
-load_dotenv()
+# 표준 환경 파일 경로 로드
+env_file = Path.home() / "minecraft-ai-backend" / ".env"
+load_dotenv(env_file)
+
+# ========= 🔧 개선된 모드팩 타겟팅 시스템 =========
+
+def load_rag_config():
+    """RAG 설정 파일 로드"""
+    import json
+    from pathlib import Path
+    
+    config_file = Path(__file__).parent / "rag_config.json"
+    default_config = {
+        "rag_mode": "auto",
+        "current_modpack": {
+            "name": "",
+            "version": "1.0.0"
+        },
+        "manual_modpack_path": ""
+    }
+    
+    if config_file.exists():
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return {**default_config, **config}
+        except Exception as e:
+            print(f"⚠️ RAG 설정 파일 로드 실패: {e}")
+    
+    return default_config
+
+def get_target_modpack(request_data):
+    """요청에서 타겟 모드팩 결정 (수동 설정 우선, 자동 감지 폴백)"""
+    config = load_rag_config()
+    
+    # 1. 수동 모드: 설정된 모드팩 사용
+    if config.get("rag_mode") == "manual":
+        manual_name = config.get("current_modpack", {}).get("name", "")
+        manual_version = config.get("current_modpack", {}).get("version", "1.0.0")
+        
+        if manual_name:
+            print(f"🔧 수동 모드: {manual_name} v{manual_version}")
+            return manual_name, manual_version
+        else:
+            print("⚠️ 수동 모드이지만 모드팩이 설정되지 않음, 자동 모드로 폴백")
+    
+    # 2. 자동 모드: 요청에서 추출 또는 환경변수 사용
+    request_name = request_data.get('modpack_name', '')
+    request_version = request_data.get('modpack_version', '1.0.0')
+    
+    if request_name and request_name != 'Unknown Modpack':
+        print(f"🤖 자동 감지: {request_name} v{request_version}")
+        return request_name, request_version
+    
+    # 3. 환경변수 폴백
+    env_name = os.getenv('CURRENT_MODPACK_NAME', '')
+    env_version = os.getenv('CURRENT_MODPACK_VERSION', '1.0.0')
+    
+    if env_name:
+        print(f"🌍 환경변수 폴백: {env_name} v{env_version}")
+        return env_name, env_version
+    
+    # 4. 기본값
+    print("⚠️ 모드팩 정보 없음, 기본값 사용")
+    return "Unknown Modpack", "1.0.0"
 
 app = Flask(__name__)
 CORS(app)
@@ -215,8 +280,12 @@ def chat():
         data = request.json
         message = data.get('message', '')
         player_uuid = data.get('player_uuid', '')
-        modpack_name = data.get('modpack_name', 'Unknown Modpack')
-        modpack_version = data.get('modpack_version', '1.0.0')
+        
+        # 🔧 개선된 모드팩 타겟팅: 수동 설정 우선, 자동 감지 폴백
+        modpack_name, modpack_version = get_target_modpack(data)
+        
+        print(f"🎯 타겟 모드팩: {modpack_name} v{modpack_version}")
+        print(f"📝 질문: {message[:100]}{'...' if len(message) > 100 else ''}")
 
         # 마인크래프트 모드팩 컨텍스트 + RAG 첨부 (RAG 우선 사용)
         rag_snippets = []

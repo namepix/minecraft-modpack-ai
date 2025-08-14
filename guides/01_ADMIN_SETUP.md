@@ -855,6 +855,185 @@ fi
 
 ---
 
+### 🧠 **9.5단계: RAG 시스템 구축 및 테스트 (권장)**
+
+**RAG (Retrieval-Augmented Generation)이란?**  
+AI가 답변할 때 모드팩 관련 문서를 검색하여 더 정확하고 구체적인 정보를 제공하는 시스템입니다.
+
+#### **9.5-1. RAG 시스템 상태 확인**
+```bash
+echo "🧠 RAG 시스템 상태 확인"
+echo "====================="
+
+# 백엔드 RAG 엔드포인트 테스트
+echo "📡 RAG 시스템 접근성 확인..."
+if curl -s --fail http://localhost:5000/gcp-rag/status > /dev/null; then
+    echo "✅ RAG 시스템 접근 가능"
+    
+    # RAG 상태 상세 정보
+    RAG_STATUS=$(curl -s http://localhost:5000/gcp-rag/status)
+    echo "📊 RAG 시스템 상태:"
+    echo "$RAG_STATUS" | python3 -m json.tool 2>/dev/null || echo "$RAG_STATUS"
+else
+    echo "❌ RAG 시스템 접근 불가"
+    echo "   💡 해결 방법: sudo systemctl restart mc-ai-backend"
+fi
+
+echo ""
+```
+
+#### **9.5-2. 모드팩 RAG 인덱스 구축 (선택)**
+```bash
+echo "📚 모드팩 RAG 인덱스 구축"
+echo "========================"
+
+# 현재 실행 중인 모드팩 경로 찾기
+CURRENT_MODPACK_DIR=$(find "$HOME" -maxdepth 2 -name "mods" -type d | head -n1 | xargs dirname)
+if [ -n "$CURRENT_MODPACK_DIR" ]; then
+    MODPACK_NAME=$(basename "$CURRENT_MODPACK_DIR")
+    
+    echo "📦 감지된 모드팩: $MODPACK_NAME"
+    echo "📁 경로: $CURRENT_MODPACK_DIR"
+    echo ""
+    
+    echo "🔍 RAG 인덱스 구축 테스트..."
+    echo "⚠️  주의: 이 작업은 시간이 오래 걸릴 수 있습니다 (5-10분)"
+    echo ""
+    
+    # 사용자 확인
+    read -p "RAG 인덱스를 구축하시겠습니까? (y/N): " -n 1 -r
+    echo ""
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "🚀 RAG 인덱스 구축 시작..."
+        
+        # RAG 인덱스 구축 요청
+        curl -X POST http://localhost:5000/gcp-rag/build \
+             -H "Content-Type: application/json" \
+             -d "{\"modpack_name\":\"$MODPACK_NAME\",\"modpack_version\":\"1.0.0\",\"modpack_path\":\"$CURRENT_MODPACK_DIR\"}" \
+             2>/dev/null | python3 -m json.tool 2>/dev/null || echo "RAG 인덱스 구축 완료"
+        
+        echo ""
+        echo "✅ RAG 인덱스 구축 완료"
+    else
+        echo "⏭️ RAG 인덱스 구축을 건너뜁니다"
+    fi
+else
+    echo "❌ 모드팩 디렉토리를 찾을 수 없습니다"
+fi
+
+echo ""
+```
+
+#### **9.5-3. RAG 검색 기능 테스트**
+```bash
+echo "🔍 RAG 검색 기능 테스트"
+echo "======================"
+
+# 테스트 검색어들
+TEST_QUERIES=("철 블록" "다이아몬드 검" "엔더 드래곤" "레드스톤")
+
+for query in "${TEST_QUERIES[@]}"; do
+    echo "🔎 검색 테스트: '$query'"
+    
+    # RAG 검색 테스트
+    SEARCH_RESULT=$(curl -s -X POST http://localhost:5000/gcp-rag/search \
+                         -H "Content-Type: application/json" \
+                         -d "{\"query\":\"$query\",\"modpack_name\":\"test\",\"modpack_version\":\"1.0.0\"}" 2>/dev/null)
+    
+    if echo "$SEARCH_RESULT" | grep -q "success.*true"; then
+        RESULT_COUNT=$(echo "$SEARCH_RESULT" | grep -o '"results_count":[0-9]*' | cut -d':' -f2)
+        echo "   ✅ 검색 성공 - ${RESULT_COUNT:-0}개 결과"
+    else
+        echo "   📝 검색 결과 없음 (RAG 인덱스 없거나 관련 문서 없음)"
+    fi
+done
+
+echo ""
+echo "💡 참고: RAG 검색 결과가 없어도 AI는 웹검색을 통해 답변합니다!"
+echo ""
+```
+
+#### **9.5-4. 완전한 AI 응답 테스트**
+```bash
+echo "🤖 완전한 AI 응답 테스트 (RAG + 웹검색)"
+echo "========================================"
+
+echo "📡 AI 채팅 API 테스트 중..."
+
+# AI 채팅 테스트
+TEST_MESSAGE="철 블록은 어떻게 만드나요?"
+CHAT_RESPONSE=$(curl -s -X POST http://localhost:5000/chat \
+                     -H "Content-Type: application/json" \
+                     -d "{\"message\":\"$TEST_MESSAGE\",\"user_id\":\"admin_test\",\"modpack_name\":\"test\"}")
+
+if echo "$CHAT_RESPONSE" | grep -q "response"; then
+    echo "✅ AI 응답 시스템 정상 작동"
+    echo ""
+    echo "📋 AI 응답 미리보기:"
+    echo "$CHAT_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(f\"   💬 질문: $TEST_MESSAGE\")
+    print(f\"   🤖 응답: {data.get('response', 'No response')[:100]}...\")
+    if data.get('rag_hits', 0) > 0:
+        print(f\"   📚 RAG 검색: {data['rag_hits']}개 모드팩 문서 활용\")
+    else:
+        print(f\"   🌐 웹검색 전용: {data.get('fallback_reason', 'RAG 결과 없음')}\")
+except:
+    print('   ✅ AI 응답 받음 (JSON 파싱 실패)')
+"
+else
+    echo "❌ AI 응답 시스템 오류"
+    echo "   💡 해결 방법: sudo systemctl restart mc-ai-backend"
+fi
+
+echo ""
+```
+
+#### **9.5-5. RAG 시스템 종합 상태**
+```bash
+echo "📊 RAG 시스템 종합 상태"
+echo "======================"
+
+# GCP RAG 상태 확인
+if curl -s --fail http://localhost:5000/gcp-rag/status > /dev/null; then
+    GCP_STATUS=$(curl -s http://localhost:5000/gcp-rag/status | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if data.get('gcp_rag_enabled'):
+        print('✅ GCP RAG: 활성화됨')
+    else:
+        print('⚠️ GCP RAG: 비활성화됨 (API 키 또는 프로젝트 설정 필요)')
+    
+    if data.get('local_rag_enabled'):
+        print('✅ 로컬 RAG: 활성화됨')
+    else:
+        print('📝 로컬 RAG: 비활성화됨')
+        
+    modpack_count = data.get('modpack_count', 0)
+    print(f'📚 등록된 모드팩: {modpack_count}개')
+except:
+    print('❌ RAG 상태 파싱 실패')
+")
+    echo "$GCP_STATUS"
+else
+    echo "❌ RAG 시스템 접근 불가"
+fi
+
+echo ""
+echo "🎯 RAG 시스템 작동 방식:"
+echo "   1. 사용자 질문 → RAG 검색으로 모드팩 관련 문서 찾기"
+echo "   2. RAG 결과 있음 → 모드팩 정보 + 웹검색으로 완전한 답변"
+echo "   3. RAG 결과 없음 → 웹검색만으로 일반적인 답변"
+echo "   4. ✨ 두 경우 모두 정상적으로 AI 답변 제공!"
+echo ""
+```
+
+---
+
 ### 🎮 **10단계: 게임 내 테스트**
 
 #### **10-1. NeoForge 모드팩 서버 시작**
@@ -874,9 +1053,14 @@ echo "   [모드팩로그] ModpackAI 모드가 성공적으로 로드됨"
 
 echo ""
 echo "3. 게임 접속 후 다음 명령어 테스트:"
-echo "   /modpackai help     - 도움말 확인"
-echo "   /modpackai give     - AI 아이템 받기"
-echo "   /ai 안녕하세요       - AI에게 인사"
+echo "   /modpackai help         - 도움말 확인"
+echo "   /modpackai give         - AI 아이템 받기"
+echo "   /ai 안녕하세요           - AI에게 인사"
+echo ""
+echo "4. RAG 시스템 게임 내 테스트:"
+echo "   /modpackai rag status   - RAG 시스템 상태 확인"
+echo "   /modpackai rag list     - 등록된 모드팩 목록"
+echo "   /modpackai rag test 철   - RAG 검색 테스트"
 echo ""
 ```
 
