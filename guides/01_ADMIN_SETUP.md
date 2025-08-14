@@ -855,18 +855,305 @@ fi
 
 ---
 
-### 🧠 **9.5단계: RAG 시스템 구축 및 테스트 (권장)**
+### 🧠 **9.5단계: RAG 시스템 완전 구축 및 테스트 (권장)**
 
 **RAG (Retrieval-Augmented Generation)이란?**  
 AI가 답변할 때 모드팩 관련 문서를 검색하여 더 정확하고 구체적인 정보를 제공하는 시스템입니다.
 
-#### **9.5-1. RAG 시스템 상태 확인**
-```bash
-echo "🧠 RAG 시스템 상태 확인"
-echo "====================="
+#### **🏗️ RAG 시스템 아키텍처**
+```
+┌─ minecraft-modpack-ai/     ← 소스 코드 저장소 (GitHub에서 clone)
+│  └─ backend/              ← 개발 및 수정용 파일들
+│     ├─ app.py
+│     ├─ config_manager.py
+│     ├─ gcp_rag_system.py
+│     ├─ rag_manager.py
+│     └─ enhanced_modpack_parser.py
+│
+└─ minecraft-ai-backend/     ← 실제 실행 환경
+   ├─ .env                  ← 환경변수 설정 파일
+   ├─ app.py               ← 실행용 Flask 앱
+   ├─ venv/                ← Python 가상환경
+   └─ ... (복사된 실행 파일들)
+```
 
-# 백엔드 RAG 엔드포인트 테스트
-echo "📡 RAG 시스템 접근성 확인..."
+#### **9.5-1. 파일 동기화 시스템 설정**
+
+**⚠️ 중요**: 소스 코드와 실행 환경 동기화가 필수입니다.
+
+```bash
+echo "🔄 파일 동기화 시스템 설정"
+echo "========================"
+
+# 동기화 스크립트 생성
+cd ~
+cat > sync_backend.sh << 'EOF'
+#!/bin/bash
+echo "🔄 소스 → 실행환경 파일 동기화 중..."
+
+# 현재 시간 기록
+echo "동기화 시작: $(date)"
+
+# Python 파일들 복사
+echo "📝 Python 파일 복사 중..."
+cp ~/minecraft-modpack-ai/backend/*.py ~/minecraft-ai-backend/ 2>/dev/null || true
+
+# 설정 파일들 복사
+echo "⚙️  설정 파일 복사 중..."
+cp ~/minecraft-modpack-ai/backend/*.json ~/minecraft-ai-backend/ 2>/dev/null || true
+cp ~/minecraft-modpack-ai/backend/requirements*.txt ~/minecraft-ai-backend/ 2>/dev/null || true
+
+# middleware 디렉토리 복사
+echo "📂 middleware 디렉토리 복사 중..."
+if [ -d ~/minecraft-modpack-ai/backend/middleware ]; then
+    cp -r ~/minecraft-modpack-ai/backend/middleware/ ~/minecraft-ai-backend/
+fi
+
+# tests 디렉토리 복사
+echo "🧪 tests 디렉토리 복사 중..."
+if [ -d ~/minecraft-modpack-ai/backend/tests ]; then
+    cp -r ~/minecraft-modpack-ai/backend/tests/ ~/minecraft-ai-backend/
+fi
+
+echo "✅ 동기화 완료!"
+echo "📊 최신 파일들:"
+ls -lt ~/minecraft-ai-backend/*.py | head -5
+
+echo ""
+echo "🔍 중요 파일 확인:"
+echo "config_manager.py: $([ -f ~/minecraft-ai-backend/config_manager.py ] && echo '✅ 존재' || echo '❌ 없음')"
+echo "gcp_rag_system.py: $([ -f ~/minecraft-ai-backend/gcp_rag_system.py ] && echo '✅ 존재' || echo '❌ 없음')"
+echo "app.py: $([ -f ~/minecraft-ai-backend/app.py ] && echo '✅ 존재' || echo '❌ 없음')"
+EOF
+
+chmod +x sync_backend.sh
+
+# 첫 동기화 실행
+echo "🚀 첫 파일 동기화 실행 중..."
+./sync_backend.sh
+```
+
+#### **9.5-2. GCP RAG 환경변수 설정**
+
+```bash
+echo "⚙️ GCP RAG 환경변수 설정"
+echo "======================="
+
+# 환경변수 파일에 GCP RAG 설정 추가
+ENV_FILE="$HOME/minecraft-ai-backend/.env"
+
+# 기존 GCP 설정 확인
+if ! grep -q "GCP_RAG_ENABLED" "$ENV_FILE"; then
+    echo ""
+    echo "# ==========================================
+# GCP RAG 시스템 설정 (고급 기능)
+# ==========================================
+
+# GCP RAG 시스템 활성화
+GCP_RAG_ENABLED=true
+
+# GCP 프로젝트 ID (실제 프로젝트 ID로 교체)
+GCP_PROJECT_ID=your-gcp-project-id
+
+# GCS 버킷 이름 (선택사항)
+GCS_BUCKET_NAME=your-gcs-bucket-name
+
+# Google Cloud 프로젝트 설정
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+
+# ==========================================
+# 모드팩 설정 (예시)
+# ==========================================
+
+# 현재 활성 모드팩 이름
+CURRENT_MODPACK_NAME=Prominence_II_RPG_Hasturian_Era
+
+# 모드팩 버전
+CURRENT_MODPACK_VERSION=3.1.51hf
+
+# ==========================================
+# RAG 및 AI 설정
+# ==========================================
+
+# Gemini 웹검색 활성화
+GEMINI_WEBSEARCH_ENABLED=true
+
+# 검색 결과 제한
+SEARCH_RESULTS_LIMIT=5
+
+# 요청당 최대 토큰 수
+MAX_TOKENS_PER_REQUEST=4000
+
+# 기본 AI 모델
+DEFAULT_AI_MODEL=gemini-2.5-pro" >> "$ENV_FILE"
+    
+    echo "✅ GCP RAG 환경변수 설정 추가됨"
+else
+    echo "✅ GCP RAG 환경변수 이미 설정됨"
+fi
+
+echo ""
+echo "📝 다음 단계: GCP 프로젝트 ID를 실제 값으로 수정하세요"
+echo "   nano $ENV_FILE"
+echo ""
+```
+
+#### **9.5-3. GCP 인증 및 권한 설정**
+
+```bash
+echo "🔐 GCP 인증 및 권한 설정"
+echo "======================="
+
+# VM의 서비스 계정 확인
+echo "1. 현재 GCP 서비스 계정 확인:"
+VM_SERVICE_ACCOUNT=$(curl -s -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email)
+echo "   서비스 계정: $VM_SERVICE_ACCOUNT"
+
+# 현재 권한 범위 확인  
+echo ""
+echo "2. 현재 권한 범위 확인:"
+SCOPES=$(curl -s -H "Metadata-Flavor: Google" \
+  http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/scopes)
+echo "$SCOPES"
+
+if echo "$SCOPES" | grep -q "https://www.googleapis.com/auth/cloud-platform"; then
+    echo "✅ cloud-platform 권한 범위 있음"
+else
+    echo "❌ cloud-platform 권한 범위 없음"
+    echo ""
+    echo "🔧 해결 방법:"
+    echo "   1. GCP 콘솔에서 VM 중지"
+    echo "   2. VM 인스턴스 → 편집"
+    echo "   3. 액세스 범위 → '모든 Cloud API에 대한 전체 액세스 허용' 선택"
+    echo "   4. 저장 → VM 시작"
+fi
+
+echo ""
+echo "3. GCP IAM 권한 확인 및 설정:"
+echo "   GCP 콘솔에서 다음 역할을 VM 서비스 계정에 부여하세요:"
+echo "   - Vertex AI 사용자 (roles/aiplatform.user)"
+echo "   - Cloud Datastore 사용자 (roles/datastore.user)"
+echo "   - 저장소 객체 뷰어 (roles/storage.objectViewer)"
+echo "   - Editor (권장 - 모든 권한)"
+echo ""
+
+# API 활성화
+echo "4. 필수 API 활성화:"
+if command -v gcloud &> /dev/null; then
+    echo "   GCloud CLI가 설치되어 있습니다. API를 활성화합니다..."
+    
+    # GCP 프로젝트 ID 가져오기 (환경변수 또는 메타데이터에서)
+    PROJECT_ID=$(grep "GCP_PROJECT_ID=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | head -1)
+    if [ "$PROJECT_ID" = "your-gcp-project-id" ] || [ -z "$PROJECT_ID" ]; then
+        PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" \
+          http://metadata.google.internal/computeMetadata/v1/project/project-id)
+    fi
+    
+    if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "your-gcp-project-id" ]; then
+        echo "   프로젝트 ID: $PROJECT_ID"
+        
+        gcloud services enable aiplatform.googleapis.com --project="$PROJECT_ID" || true
+        gcloud services enable firestore.googleapis.com --project="$PROJECT_ID" || true
+        
+        echo "   ✅ API 활성화 요청 완료"
+    else
+        echo "   ⚠️ GCP_PROJECT_ID가 설정되지 않았습니다. 수동으로 활성화하세요:"
+        echo "      gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID"
+        echo "      gcloud services enable firestore.googleapis.com --project=YOUR_PROJECT_ID"
+    fi
+else
+    echo "   ⚠️ GCloud CLI가 설치되지 않았습니다. GCP 콘솔에서 수동으로 활성화하세요:"
+    echo "      - Vertex AI API"
+    echo "      - Cloud Firestore API"
+fi
+
+echo ""
+```
+
+#### **9.5-4. RAG 설정 도구 사용**
+
+```bash
+echo "🎯 RAG 설정 도구 사용"
+echo "==================="
+
+# 백엔드 실행 환경으로 이동
+cd "$HOME/minecraft-ai-backend"
+
+# 가상환경 활성화
+echo "1. Python 가상환경 활성화..."
+source venv/bin/activate
+
+# config_manager.py 존재 확인
+if [ ! -f "config_manager.py" ]; then
+    echo "❌ config_manager.py가 없습니다. 동기화를 실행합니다..."
+    cd ~
+    ./sync_backend.sh
+    cd "$HOME/minecraft-ai-backend"
+fi
+
+if [ -f "config_manager.py" ]; then
+    echo ""
+    echo "2. 현재 RAG 설정 상태 확인..."
+    python3 config_manager.py status
+    
+    echo ""
+    echo "3. GCP 프로젝트 ID 설정 (필요시):"
+    echo "   python3 config_manager.py set-gcp-project \"your-actual-gcp-project-id\""
+    echo ""
+    echo "4. 수동 모드팩 설정 (선택사항):"
+    echo "   python3 config_manager.py set-manual \"Prominence_II_RPG_Hasturian_Era\" \"3.1.51hf\""
+    echo ""
+else
+    echo "❌ config_manager.py를 찾을 수 없습니다."
+    echo "   해결 방법: ~/sync_backend.sh 실행"
+fi
+
+# 가상환경 비활성화
+deactivate
+
+echo ""
+```
+
+#### **9.5-5. 백엔드 재시작 및 RAG 시스템 상태 확인**
+
+```bash
+echo "🚀 백엔드 재시작 및 RAG 시스템 상태 확인"
+echo "======================================="
+
+# 환경변수 로드 테스트
+echo "1. 환경변수 설정 확인..."
+cd "$HOME/minecraft-ai-backend"
+source venv/bin/activate
+
+# 환경변수 직접 설정 (터미널 세션용)
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+deactivate
+
+# 백엔드 서비스 재시작
+echo ""
+echo "2. 백엔드 서비스 재시작..."
+sudo systemctl restart mc-ai-backend
+
+# 재시작 대기
+sleep 5
+
+# 서비스 상태 확인
+if sudo systemctl is-active --quiet mc-ai-backend; then
+    echo "✅ 백엔드 서비스 재시작 성공"
+else
+    echo "❌ 백엔드 서비스 재시작 실패"
+    echo "📋 오류 로그:"
+    sudo journalctl -u mc-ai-backend -n 10 --no-pager
+fi
+
+echo ""
+echo "3. RAG 시스템 접근성 확인..."
+sleep 3
+
 if curl -s --fail http://localhost:5000/gcp-rag/status > /dev/null; then
     echo "✅ RAG 시스템 접근 가능"
     
@@ -882,7 +1169,50 @@ fi
 echo ""
 ```
 
-#### **9.5-2. 모드팩 RAG 인덱스 구축 (선택)**
+#### **9.5-6. Firestore 데이터베이스 생성**
+
+```bash
+echo "🗄️ Firestore 데이터베이스 생성"
+echo "=========================="
+
+if command -v gcloud &> /dev/null; then
+    # GCP 프로젝트 ID 가져오기
+    PROJECT_ID=$(grep "GCP_PROJECT_ID=" "$HOME/minecraft-ai-backend/.env" | cut -d'=' -f2 | tr -d '"' | head -1)
+    if [ "$PROJECT_ID" = "your-gcp-project-id" ] || [ -z "$PROJECT_ID" ]; then
+        PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" \
+          http://metadata.google.internal/computeMetadata/v1/project/project-id)
+    fi
+    
+    if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "your-gcp-project-id" ]; then
+        echo "프로젝트 ID: $PROJECT_ID"
+        echo ""
+        echo "Firestore 데이터베이스 생성 중... (최초 1회만)"
+        
+        gcloud firestore databases create \
+            --region=us-central1 \
+            --project="$PROJECT_ID" \
+            --type=firestore-native || true
+        
+        echo "✅ Firestore 데이터베이스 생성 완료 (이미 존재하는 경우 무시됨)"
+    else
+        echo "❌ GCP 프로젝트 ID가 설정되지 않았습니다."
+        echo "   수동 생성 방법:"
+        echo "   gcloud firestore databases create --region=us-central1 --project=YOUR_PROJECT_ID --type=firestore-native"
+    fi
+else
+    echo "❌ GCloud CLI가 설치되지 않았습니다."
+    echo "   GCP 콘솔에서 수동으로 Firestore 데이터베이스를 생성하세요:"
+    echo "   1. GCP 콘솔 → Firestore"
+    echo "   2. 데이터베이스 생성"
+    echo "   3. 네이티브 모드 선택"
+    echo "   4. 리전: us-central1"
+fi
+
+echo ""
+```
+
+#### **9.5-7. 모드팩 RAG 인덱스 구축**
+
 ```bash
 echo "📚 모드팩 RAG 인덱스 구축"
 echo "========================"
@@ -896,43 +1226,72 @@ if [ -n "$CURRENT_MODPACK_DIR" ]; then
     echo "📁 경로: $CURRENT_MODPACK_DIR"
     echo ""
     
-    echo "🔍 RAG 인덱스 구축 테스트..."
-    echo "⚠️  주의: 이 작업은 시간이 오래 걸릴 수 있습니다 (5-10분)"
+    echo "🔍 RAG 인덱스 구축 옵션:"
+    echo "   1. REST API를 통한 인덱스 구축 (간단)"
+    echo "   2. rag_manager.py를 통한 인덱스 구축 (상세)"
     echo ""
     
-    # 사용자 확인
-    read -p "RAG 인덱스를 구축하시겠습니까? (y/N): " -n 1 -r
+    read -p "선택하세요 (1/2): " -n 1 -r
     echo ""
     
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "🚀 RAG 인덱스 구축 시작..."
+    if [[ $REPLY =~ ^[1]$ ]]; then
+        echo "🚀 REST API를 통한 RAG 인덱스 구축..."
         
         # RAG 인덱스 구축 요청
-        curl -X POST http://localhost:5000/gcp-rag/build \
+        RESULT=$(curl -s -X POST http://localhost:5000/gcp-rag/build \
              -H "Content-Type: application/json" \
-             -d "{\"modpack_name\":\"$MODPACK_NAME\",\"modpack_version\":\"1.0.0\",\"modpack_path\":\"$CURRENT_MODPACK_DIR\"}" \
-             2>/dev/null | python3 -m json.tool 2>/dev/null || echo "RAG 인덱스 구축 완료"
+             -d "{\"modpack_name\":\"$MODPACK_NAME\",\"modpack_version\":\"1.0.0\",\"modpack_path\":\"$CURRENT_MODPACK_DIR\"}")
         
-        echo ""
         echo "✅ RAG 인덱스 구축 완료"
+        echo "$RESULT" | python3 -m json.tool 2>/dev/null || echo "$RESULT"
+        
+    elif [[ $REPLY =~ ^[2]$ ]]; then
+        echo "🚀 rag_manager.py를 통한 상세 RAG 인덱스 구축..."
+        
+        cd "$HOME/minecraft-ai-backend"
+        source venv/bin/activate
+        
+        if [ -f "rag_manager.py" ]; then
+            echo "📊 현재 등록된 모드팩:"
+            python3 rag_manager.py list
+            
+            echo ""
+            echo "🔨 RAG 인덱스 구축 시작..."
+            python3 rag_manager.py build "$MODPACK_NAME" "1.0.0" "$CURRENT_MODPACK_DIR"
+            
+            echo ""
+            echo "📊 업데이트된 모드팩 목록:"
+            python3 rag_manager.py list
+        else
+            echo "❌ rag_manager.py를 찾을 수 없습니다."
+            echo "   해결 방법: ~/sync_backend.sh 실행"
+        fi
+        
+        deactivate
     else
         echo "⏭️ RAG 인덱스 구축을 건너뜁니다"
     fi
 else
     echo "❌ 모드팩 디렉토리를 찾을 수 없습니다"
+    echo "   일반적인 모드팩 경로들:"
+    echo "   ls -la /opt/minecraft/"
+    echo "   ls -la ~/minecraft/"
+    echo "   ls -la /srv/minecraft/"
 fi
 
 echo ""
 ```
 
-#### **9.5-3. RAG 검색 기능 테스트**
+#### **9.5-8. RAG 검색 및 AI 응답 테스트**
+
 ```bash
-echo "🔍 RAG 검색 기능 테스트"
-echo "======================"
+echo "🔍 RAG 검색 및 AI 응답 테스트"
+echo "=========================="
 
 # 테스트 검색어들
 TEST_QUERIES=("철 블록" "다이아몬드 검" "엔더 드래곤" "레드스톤")
 
+echo "1. RAG 검색 기능 테스트:"
 for query in "${TEST_QUERIES[@]}"; do
     echo "🔎 검색 테스트: '$query'"
     
@@ -942,8 +1301,8 @@ for query in "${TEST_QUERIES[@]}"; do
                          -d "{\"query\":\"$query\",\"modpack_name\":\"test\",\"modpack_version\":\"1.0.0\"}" 2>/dev/null)
     
     if echo "$SEARCH_RESULT" | grep -q "success.*true"; then
-        RESULT_COUNT=$(echo "$SEARCH_RESULT" | grep -o '"results_count":[0-9]*' | cut -d':' -f2)
-        echo "   ✅ 검색 성공 - ${RESULT_COUNT:-0}개 결과"
+        RESULT_COUNT=$(echo "$SEARCH_RESULT" | grep -o '"results_count":[0-9]*' | cut -d':' -f2 || echo "0")
+        echo "   ✅ 검색 성공 - ${RESULT_COUNT}개 결과"
     else
         echo "   📝 검색 결과 없음 (RAG 인덱스 없거나 관련 문서 없음)"
     fi
@@ -951,18 +1310,14 @@ done
 
 echo ""
 echo "💡 참고: RAG 검색 결과가 없어도 AI는 웹검색을 통해 답변합니다!"
+
 echo ""
-```
-
-#### **9.5-4. 완전한 AI 응답 테스트**
-```bash
-echo "🤖 완전한 AI 응답 테스트 (RAG + 웹검색)"
-echo "========================================"
-
-echo "📡 AI 채팅 API 테스트 중..."
+echo "2. 완전한 AI 응답 테스트 (RAG + 웹검색):"
 
 # AI 채팅 테스트
 TEST_MESSAGE="철 블록은 어떻게 만드나요?"
+echo "💬 테스트 질문: $TEST_MESSAGE"
+
 CHAT_RESPONSE=$(curl -s -X POST http://localhost:5000/chat \
                      -H "Content-Type: application/json" \
                      -d "{\"message\":\"$TEST_MESSAGE\",\"user_id\":\"admin_test\",\"modpack_name\":\"test\"}")
@@ -970,29 +1325,35 @@ CHAT_RESPONSE=$(curl -s -X POST http://localhost:5000/chat \
 if echo "$CHAT_RESPONSE" | grep -q "response"; then
     echo "✅ AI 응답 시스템 정상 작동"
     echo ""
-    echo "📋 AI 응답 미리보기:"
+    echo "📋 AI 응답 분석:"
     echo "$CHAT_RESPONSE" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
-    print(f\"   💬 질문: $TEST_MESSAGE\")
-    print(f\"   🤖 응답: {data.get('response', 'No response')[:100]}...\")
+    print(f\"   🤖 응답 길이: {len(data.get('response', ''))} 문자\")
     if data.get('rag_hits', 0) > 0:
-        print(f\"   📚 RAG 검색: {data['rag_hits']}개 모드팩 문서 활용\")
+        print(f\"   📚 RAG 활용: {data['rag_hits']}개 모드팩 문서 참조\")
     else:
-        print(f\"   🌐 웹검색 전용: {data.get('fallback_reason', 'RAG 결과 없음')}\")
-except:
+        print(f\"   🌐 웹검색 활용: {data.get('web_search_used', '확인 불가')}\")
+    
+    # 응답 미리보기
+    response_preview = data.get('response', 'No response')[:200]
+    print(f\"   📝 응답 미리보기: {response_preview}...\")
+except Exception as e:
     print('   ✅ AI 응답 받음 (JSON 파싱 실패)')
+    print(f'   Debug: {str(e)}')
 "
 else
     echo "❌ AI 응답 시스템 오류"
+    echo "   응답 내용: $CHAT_RESPONSE"
     echo "   💡 해결 방법: sudo systemctl restart mc-ai-backend"
 fi
 
 echo ""
 ```
 
-#### **9.5-5. RAG 시스템 종합 상태**
+#### **9.5-9. RAG 시스템 종합 상태 및 문제 해결**
+
 ```bash
 echo "📊 RAG 시스템 종합 상태"
 echo "======================"
@@ -1003,20 +1364,31 @@ if curl -s --fail http://localhost:5000/gcp-rag/status > /dev/null; then
 import sys, json
 try:
     data = json.load(sys.stdin)
+    print('RAG 시스템 상태 분석:')
+    
     if data.get('gcp_rag_enabled'):
-        print('✅ GCP RAG: 활성화됨')
+        print('   ✅ GCP RAG: 활성화됨')
     else:
-        print('⚠️ GCP RAG: 비활성화됨 (API 키 또는 프로젝트 설정 필요)')
+        print('   ⚠️ GCP RAG: 비활성화됨')
+    
+    if data.get('gcp_rag_available'):
+        print('   ✅ GCP RAG: 사용 가능')
+    else:
+        print('   ❌ GCP RAG: 사용 불가 (권한 또는 설정 오류)')
     
     if data.get('local_rag_enabled'):
-        print('✅ 로컬 RAG: 활성화됨')
+        print('   ✅ 로컬 RAG: 활성화됨')
     else:
-        print('📝 로컬 RAG: 비활성화됨')
+        print('   📝 로컬 RAG: 비활성화됨')
         
+    project_id = data.get('project_id', 'null')
+    print(f'   🏗️ GCP 프로젝트: {project_id}')
+    
     modpack_count = data.get('modpack_count', 0)
-    print(f'📚 등록된 모드팩: {modpack_count}개')
-except:
+    print(f'   📚 등록된 모드팩: {modpack_count}개')
+except Exception as e:
     print('❌ RAG 상태 파싱 실패')
+    print(f'Debug: {str(e)}')
 ")
     echo "$GCP_STATUS"
 else
@@ -1029,6 +1401,25 @@ echo "   1. 사용자 질문 → RAG 검색으로 모드팩 관련 문서 찾기
 echo "   2. RAG 결과 있음 → 모드팩 정보 + 웹검색으로 완전한 답변"
 echo "   3. RAG 결과 없음 → 웹검색만으로 일반적인 답변"
 echo "   4. ✨ 두 경우 모두 정상적으로 AI 답변 제공!"
+
+echo ""
+echo "🔧 문제 해결 가이드:"
+echo "   📋 'project_id: null' 오류:"
+echo "      - nano ~/minecraft-ai-backend/.env"
+echo "      - GCP_PROJECT_ID=your-actual-project-id 설정"
+echo "      - sudo systemctl restart mc-ai-backend"
+echo ""
+echo "   📋 'gcp_rag_available: false' 오류:"
+echo "      - GCP API 활성화: aiplatform.googleapis.com, firestore.googleapis.com"
+echo "      - VM 서비스 계정 권한 확인: Vertex AI 사용자, Cloud Datastore 사용자"
+echo "      - VM 액세스 범위: cloud-platform 포함 확인"
+echo ""
+echo "   📋 동기화 오류:"
+echo "      - cd ~ && ./sync_backend.sh"
+echo "      - sudo systemctl restart mc-ai-backend"
+echo ""
+
+echo "✅ RAG 시스템 완전 구축 및 테스트 완료!"
 echo ""
 ```
 
