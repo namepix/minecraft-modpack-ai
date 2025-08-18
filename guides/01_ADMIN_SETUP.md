@@ -275,7 +275,7 @@ cd ..
 
 ---
 
-### ⚔️ **4단계: NeoForge 모드 빌드**
+### ⚔️ **4단계: NeoForge 모드 빌드 (개별)**
 
 **NeoForge란?**  
 MinecraftForge의 후속 프로젝트로, Java로 Minecraft 모드를 만들 수 있게 해주는 플랫폼입니다.
@@ -370,12 +370,12 @@ cd ..
 
 ---
 
-### 🎯 **5단계: Fabric 모드 빌드 (듀얼 모드로더 지원)**
+### 🎯 **5단계: Fabric 모드 빌드 (개별, 듀얼 모드로더 지원)**
 
 **Fabric이란?**  
 NeoForge의 대안으로, 더 가벼우고 빠른 모드 로딩을 제공하는 모드 플랫폼입니다.
 
-#### **5-1. Fabric 모드 빌드 (선택사항)**
+#### **5-1. Fabric 모드 개별 빌드 (선택사항)**
 
 **⚠️ 중요**: Fabric 모드 빌드에서 Gradle 관련 오류가 발생할 수 있습니다. 아래 해결 방법을 순서대로 시도하세요.
 
@@ -456,17 +456,28 @@ chmod +x ./gradlew
 ./gradlew clean build --refresh-dependencies
 ```
 
-#### **5-2. 통합 빌드 스크립트 사용 (권장)**
+#### **5-2. 빌드 결과물 정리 (중복 빌드 방지)**
+
+**⚡ 효율적인 방법**: 이미 4단계와 5-1단계에서 빌드를 완료했으므로, 중복 빌드 대신 **결과물만 정리**합니다.
+
 ```bash
-# 모든 모드를 한 번에 빌드하는 스크립트 실행
+# 빌드 결과물만 정리하는 스크립트 (빌드 시간 절약)
+chmod +x organize_build_output.sh
+./organize_build_output.sh
+```
+
+**💡 선택사항 - 전체 재빌드가 필요한 경우**:
+```bash
+# 모든 모드를 처음부터 다시 빌드 (시간 더 오래 걸림)
 chmod +x build_all_mods.sh
 ./build_all_mods.sh
 ```
 
-**이 스크립트가 수행하는 작업**:
-- NeoForge 모드와 Fabric 모드 순차적 빌드
-- 빌드 결과물을 `build_output/` 폴더에 정리
+**organize_build_output.sh가 수행하는 작업**:
+- 이미 빌드된 모드 파일들을 `build_output/` 폴더에 정리
+- NeoForge와 Fabric 모드 파일 자동 탐지 및 복사
 - 각 모드 파일의 크기와 위치 정보 제공
+- **중복 빌드 없이 결과물만 정리**하여 시간 절약
 
 ---
 
@@ -501,18 +512,24 @@ echo "✅ 백엔드 파일 배포 완료: $BACKEND_DIR"
 # 백엔드 디렉토리로 이동
 cd "$BACKEND_DIR"
 
-# 프로덕션용 가상환경 생성
-python3 -m venv venv
+# 프로덕션용 가상환경 생성 (시스템 호환성 확보)
+python3 -m venv venv --system-site-packages
 
 # 가상환경 활성화
 source venv/bin/activate
 
-# 의존성 설치
-pip install --upgrade pip
-pip install -r requirements.txt
+# 의존성 설치 (타임아웃 연장 및 안정성 강화)
+venv/bin/pip install --upgrade pip
 
-# 가상환경 비활성화
-deactivate
+# 주요 의존성 설치 (대용량 패키지 포함)
+echo "📦 의존성 설치 중... (최대 10분 소요)"
+timeout 600 venv/bin/pip install -r requirements.txt --no-cache-dir || {
+    echo "⚠️ 의존성 설치 시간 초과 - 재시도 중..."
+    venv/bin/pip install -r requirements.txt --no-cache-dir
+}
+
+# 가상환경 비활성화 (자동으로 처리됨)
+# deactivate # 서브셸에서 자동 처리
 
 echo "✅ 프로덕션 가상환경 설정 완료"
 ```
@@ -568,9 +585,9 @@ echo "✅ 백엔드 서비스 등록 완료"
 
 ---
 
-### 🗂️ **7단계: 모드팩에 모드 자동 배포**
+### 🗂️ **6단계: 모드팩에 모드 자동 배포**
 
-#### **7-1. 모드팩 자동 감지 (NeoForge + Fabric)**
+#### **6-1. 모드팩 자동 감지 (NeoForge + Fabric)**
 ```bash
 echo "🔍 설치 가능한 모드팩을 찾는 중..."
 
@@ -603,14 +620,18 @@ echo "   - NeoForge: ${#NEOFORGE_MODPACKS[@]}개"
 echo "   - Fabric: ${#FABRIC_MODPACKS[@]}개"
 ```
 
-#### **7-2. NeoForge 모드 자동 설치**
+#### **6-2. NeoForge 모드 자동 설치**
 ```bash
 if [ ${#NEOFORGE_MODPACKS[@]} -gt 0 ]; then
     echo ""
     echo "🔨 NeoForge 모드 설치 시작..."
     
-    # 빌드된 NeoForge 모드 파일 경로
-    NEOFORGE_MOD_PATH="minecraft_mod/build/libs/$(ls minecraft_mod/build/libs/modpackai-*.jar | head -n1 | xargs basename)"
+    # 빌드된 NeoForge 모드 파일 경로 (build_output 또는 개별 빌드 경로)
+    if [ -f "build_output/modpackai-neoforge-1.0.0.jar" ]; then
+        NEOFORGE_MOD_PATH="build_output/modpackai-neoforge-1.0.0.jar"
+    else
+        NEOFORGE_MOD_PATH="minecraft_mod/build/libs/$(ls minecraft_mod/build/libs/modpackai-*.jar | head -n1 | xargs basename)"
+    fi
     
     if [ ! -f "$NEOFORGE_MOD_PATH" ]; then
         echo "❌ NeoForge 모드 파일을 찾을 수 없습니다: $NEOFORGE_MOD_PATH"
@@ -644,14 +665,18 @@ else
 fi
 ```
 
-#### **7-3. Fabric 모드 자동 설치**
+#### **6-3. Fabric 모드 자동 설치**
 ```bash
 if [ ${#FABRIC_MODPACKS[@]} -gt 0 ]; then
     echo ""
     echo "🧵 Fabric 모드 설치 시작..."
     
-    # 빌드된 Fabric 모드 파일 경로
-    FABRIC_MOD_PATH="minecraft_fabric_mod/build/libs/$(ls minecraft_fabric_mod/build/libs/modpackai-fabric-*.jar | head -n1 | xargs basename)"
+    # 빌드된 Fabric 모드 파일 경로 (build_output 또는 개별 빌드 경로)
+    if [ -f "build_output/modpackai-fabric-1.0.0.jar" ]; then
+        FABRIC_MOD_PATH="build_output/modpackai-fabric-1.0.0.jar"
+    else
+        FABRIC_MOD_PATH="minecraft_fabric_mod/build/libs/$(ls minecraft_fabric_mod/build/libs/modpackai-fabric-*.jar | head -n1 | xargs basename)"
+    fi
     
     if [ ! -f "$FABRIC_MOD_PATH" ]; then
         echo "❌ Fabric 모드 파일을 찾을 수 없습니다: $FABRIC_MOD_PATH"
@@ -685,7 +710,7 @@ else
 fi
 ```
 
-#### **7-4. 설치 완료 요약**
+#### **6-4. 설치 완료 요약**
 ```bash
 echo ""
 echo "🎉 모드 설치 완료!"
@@ -704,9 +729,9 @@ echo "🎮 재시작 후 게임에서 /ai 명령어를 사용할 수 있습니�
 
 ---
 
-### 🔑 **8단계: API 키 설정 (필수)**
+### 🔑 **7단계: API 키 설정 (필수)**
 
-#### **8-1. 환경 설정 파일 준비**
+#### **7-1. 환경 설정 파일 준비**
 ```bash
 # 백엔드 디렉토리로 이동
 cd "$HOME/minecraft-ai-backend"
@@ -745,7 +770,7 @@ fi
 echo "✅ 환경 설정 파일 생성: $HOME/minecraft-ai-backend/.env"
 ```
 
-#### **8-2. Google Gemini API 키 발급 가이드**
+#### **7-2. Google Gemini API 키 발급 가이드**
 
 **Google Gemini API 키가 권장되는 이유**:
 - **무료 할당량**: 월 60회 무료 요청
@@ -771,7 +796,7 @@ echo "   sudo systemctl restart mc-ai-backend"
 echo ""
 ```
 
-#### **8-3. API 키 및 GCP 설정 도움말**
+#### **7-3. API 키 및 GCP 설정 도움말**
 ```bash
 echo "💡 API 키 설정 팁:"
 echo "   - GOOGLE_API_KEY=your-key-here 형태로 입력"
@@ -791,9 +816,9 @@ echo ""
 
 ---
 
-### 🚀 **9단계: 서비스 시작 및 검증**
+### 🚀 **8단계: 서비스 시작 및 검증**
 
-#### **9-1. 백엔드 서비스 시작**
+#### **8-1. 백엔드 서비스 시작**
 ```bash
 echo "🚀 백엔드 서비스를 시작합니다..."
 
@@ -821,7 +846,7 @@ else
 fi
 ```
 
-#### **9-2. API 연결 테스트**
+#### **8-2. API 연결 테스트**
 ```bash
 echo "🧪 API 연결 테스트 중..."
 
@@ -853,7 +878,7 @@ else
 fi
 ```
 
-#### **9-3. 설치 검증 체크리스트**
+#### **8-3. 설치 검증 체크리스트**
 ```bash
 echo ""
 echo "📋 설치 검증 체크리스트"
@@ -907,7 +932,7 @@ fi
 
 ---
 
-### 🧠 **9.5단계: RAG 시스템 완전 구축 및 테스트 (권장)**
+### 🧠 **8.5단계: RAG 시스템 완전 구축 및 테스트 (권장)**
 
 **RAG (Retrieval-Augmented Generation)이란?**  
 AI가 답변할 때 모드팩 관련 문서를 검색하여 더 정확하고 구체적인 정보를 제공하는 시스템입니다.
@@ -929,7 +954,7 @@ AI가 답변할 때 모드팩 관련 문서를 검색하여 더 정확하고 구
    └─ ... (복사된 실행 파일들)
 ```
 
-#### **9.5-1. 파일 동기화 시스템 설정**
+#### **8.5-1. 파일 동기화 시스템 설정**
 
 **⚠️ 중요**: 소스 코드와 실행 환경 동기화가 필수입니다.
 
@@ -985,7 +1010,7 @@ echo "🚀 첫 파일 동기화 실행 중..."
 ./sync_backend.sh
 ```
 
-#### **9.5-2. GCP RAG 환경변수 설정**
+#### **8.5-2. GCP RAG 환경변수 설정**
 
 ```bash
 echo "⚙️ GCP RAG 환경변수 설정"
@@ -1050,7 +1075,7 @@ echo "   nano $ENV_FILE"
 echo ""
 ```
 
-#### **9.5-3. GCP 인증 및 권한 설정**
+#### **8.5-3. GCP 인증 및 권한 설정**
 
 ```bash
 echo "🔐 GCP 인증 및 권한 설정"
@@ -1123,7 +1148,7 @@ fi
 echo ""
 ```
 
-#### **9.5-4. RAG 설정 도구 사용**
+#### **8.5-4. RAG 설정 도구 사용**
 
 ```bash
 echo "🎯 RAG 설정 도구 사용"
@@ -1167,7 +1192,7 @@ deactivate
 echo ""
 ```
 
-#### **9.5-5. 백엔드 재시작 및 RAG 시스템 상태 확인**
+#### **8.5-5. 백엔드 재시작 및 RAG 시스템 상태 확인**
 
 ```bash
 echo "🚀 백엔드 재시작 및 RAG 시스템 상태 확인"
@@ -1221,7 +1246,7 @@ fi
 echo ""
 ```
 
-#### **9.5-6. Firestore 데이터베이스 생성**
+#### **8.5-6. Firestore 데이터베이스 생성**
 
 ```bash
 echo "🗄️ Firestore 데이터베이스 생성"
@@ -1263,7 +1288,7 @@ fi
 echo ""
 ```
 
-#### **9.5-7. 모드팩 RAG 인덱스 구축**
+#### **8.5-7. 모드팩 RAG 인덱스 구축**
 
 ```bash
 echo "📚 모드팩 RAG 인덱스 구축"
@@ -1334,7 +1359,7 @@ fi
 echo ""
 ```
 
-#### **9.5-8. RAG 검색 및 AI 응답 테스트**
+#### **8.5-8. RAG 검색 및 AI 응답 테스트**
 
 ```bash
 echo "🔍 RAG 검색 및 AI 응답 테스트"
@@ -1404,7 +1429,7 @@ fi
 echo ""
 ```
 
-#### **9.5-9. RAG 시스템 종합 상태 및 문제 해결**
+#### **8.5-9. RAG 시스템 종합 상태 및 문제 해결**
 
 ```bash
 echo "📊 RAG 시스템 종합 상태"
@@ -1477,9 +1502,9 @@ echo ""
 
 ---
 
-### 🎮 **10단계: 게임 내 테스트**
+### 🎮 **9단계: 게임 내 테스트**
 
-#### **10-1. NeoForge 모드팩 서버 시작**
+#### **9-1. NeoForge 모드팩 서버 시작**
 ```bash
 echo "🎮 게임 내 테스트 준비"
 echo "==================="
@@ -1507,7 +1532,7 @@ echo "   /modpackai rag test 철   - RAG 검색 테스트"
 echo ""
 ```
 
-#### **10-2. 문제 해결 가이드**
+#### **9-2. 문제 해결 가이드**
 ```bash
 echo "🔧 문제 해결 가이드"
 echo "=================="

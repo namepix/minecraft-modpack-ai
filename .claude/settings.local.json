@@ -32,7 +32,11 @@
       "Bash(/tmp/gradle-8.12/bin/gradle wrapper:*)",
       "WebSearch",
       "Bash(./build_all_mods.sh:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(./organize_build_output.sh:*)",
+      "Bash(dos2unix:*)",
+      "Bash(sudo systemctl restart:*)",
+      "Bash(sudo systemctl status:*)"
     ],
     "deny": [],
     "additionalDirectories": [
