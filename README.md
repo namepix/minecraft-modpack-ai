@@ -95,6 +95,7 @@ GET  /recipe/<item_name>        # 아이템 제작법 조회
 - [게임 내 명령어](guides/03_GAME_COMMANDS.md)
 - [모드팩 전환](guides/04_MODPACK_SWITCH.md)
 - [개발자 가이드](guides/05_DEVELOPMENT.md)
+- [Fabric 빌드 문제 해결](FABRIC_BUILD_TROUBLESHOOTING.md)
 
 ## 🔄 버전 선택 가이드
 

@@ -376,32 +376,84 @@ cd ..
 NeoForge의 대안으로, 더 가벼우고 빠른 모드 로딩을 제공하는 모드 플랫폼입니다.
 
 #### **5-1. Fabric 모드 빌드 (선택사항)**
+
+**⚠️ 중요**: Fabric 모드 빌드에서 Gradle 관련 오류가 발생할 수 있습니다. 아래 해결 방법을 순서대로 시도하세요.
+
 ```bash
 # Fabric 모드 디렉토리가 있는지 확인
 if [ -d "minecraft_fabric_mod" ]; then
     echo "🧵 Fabric 모드도 함께 빌드합니다..."
     cd minecraft_fabric_mod
     
-    # Fabric 모드 Gradle Wrapper 준비
-    if [ ! -f "gradlew" ]; then
-        gradle wrapper --gradle-version 8.8 --distribution-type all
+    # Fabric 모드 Gradle Wrapper 준비 (강화된 버전)
+    if [ ! -f "gradlew" ] || [ ! -x "gradlew" ]; then
+        echo "📦 Gradle Wrapper 생성 중..."
+        
+        # 시스템 Gradle 버전이 오래된 경우 최신 Gradle 다운로드
+        if ! gradle --version 2>/dev/null | grep -q "Gradle [8-9]"; then
+            echo "⚠️ 시스템 Gradle 버전이 오래되었습니다. 최신 Gradle 다운로드 중..."
+            
+            # 임시 디렉토리에 최신 Gradle 다운로드
+            wget -q https://services.gradle.org/distributions/gradle-8.8-bin.zip -O /tmp/gradle-8.8-bin.zip
+            unzip -q /tmp/gradle-8.8-bin.zip -d /tmp
+            
+            # 최신 Gradle로 wrapper 생성
+            /tmp/gradle-8.8/bin/gradle wrapper --gradle-version 8.8 --distribution-type all
+            
+            # 임시 파일 정리
+            rm -rf /tmp/gradle-8.8 /tmp/gradle-8.8-bin.zip
+        else
+            gradle wrapper --gradle-version 8.8 --distribution-type all
+        fi
     fi
     
     chmod +x ./gradlew
     
     # Fabric 모드 빌드
+    echo "🔨 Fabric 모드 빌드 시작..."
     ./gradlew clean build
     
     # 빌드 결과 확인
     FABRIC_JAR=$(find build/libs -name "modpackai-fabric-*.jar" | head -n1)
     if [ -f "$FABRIC_JAR" ]; then
         echo "✅ Fabric 모드 빌드 성공: $FABRIC_JAR"
+    else
+        echo "❌ Fabric 모드 빌드 실패"
+        echo "💡 해결방법: ./fix_fabric_build.sh 스크립트를 실행하세요"
     fi
     
     cd ..
 else
     echo "ℹ️ Fabric 모드 디렉토리가 없습니다. NeoForge만 사용합니다."
 fi
+```
+
+**🔧 Fabric 빌드 문제 해결 방법**:
+
+만약 위 단계에서 오류가 발생한다면:
+
+```bash
+# 자동 해결 스크립트 실행
+./fix_fabric_build.sh
+
+# 또는 수동 해결
+cd minecraft_fabric_mod
+
+# 1. Fabric Loom 플러그인 버전 확인/수정
+grep "fabric-loom" build.gradle
+# 만약 SNAPSHOT 버전이면 안정 버전으로 변경하세요
+
+# 2. 기존 빌드 캐시 완전 삭제
+rm -rf .gradle build ~/.gradle/caches/fabric-loom
+
+# 3. Gradle wrapper 재생성
+rm -f gradlew gradlew.bat
+rm -rf gradle/
+gradle wrapper --gradle-version 8.8 --distribution-type all
+chmod +x ./gradlew
+
+# 4. 빌드 재시도
+./gradlew clean build --refresh-dependencies
 ```
 
 #### **5-2. 통합 빌드 스크립트 사용 (권장)**

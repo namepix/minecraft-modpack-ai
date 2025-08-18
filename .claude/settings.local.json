@@ -24,8 +24,19 @@
       "Bash(./gradlew:*)",
       "Bash(gradle build)",
       "Bash(java:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(wget:*)",
+      "Bash(unzip:*)",
+      "Bash(/tmp/gradle-8.8/bin/gradle wrapper:*)",
+      "Bash(rm:*)",
+      "Bash(/tmp/gradle-8.12/bin/gradle wrapper:*)",
+      "WebSearch",
+      "Bash(./build_all_mods.sh:*)",
+      "Bash(bash:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/home/namepix080"
+    ]
   }
 }
