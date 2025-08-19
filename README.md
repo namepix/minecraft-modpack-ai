@@ -95,20 +95,26 @@ GET  /recipe/<item_name>        # 아이템 제작법 조회
 - [게임 내 명령어](guides/03_GAME_COMMANDS.md)
 - [모드팩 전환](guides/04_MODPACK_SWITCH.md)
 - [개발자 가이드](guides/05_DEVELOPMENT.md)
+- [다중 Java 버전 지원 가이드](MULTI_JAVA_GUIDE.md)
 - [Fabric 빌드 문제 해결](FABRIC_BUILD_TROUBLESHOOTING.md)
 
-## 🔄 버전 선택 가이드
+## 🔄 다중 Java 버전 지원
 
-### 🎯 NeoForge 모드 버전 (현재 - 권장)
-- ✅ **NeoForge 서버에서 바로 작동**
-- ✅ **하이브리드 서버 불필요**
-- ✅ **더 안정적이고 호환성 좋음**
-- ✅ **Screen API 기반 현대적 GUI**
+### 🎯 지원하는 구성
+| 모드팩 예시 | 플랫폼 | Java 버전 | 사용법 |
+|-------------|--------|-----------|--------|
+| **enigmatica_10** | NeoForge | 21 | `./modpack_selector.sh enigmatica_10` |
+| **prominence_2** | Fabric | 17 | `./modpack_selector.sh prominence_2` |
+| **all_the_mods_9** | NeoForge | 21 | `./modpack_selector.sh all_the_mods_9` |
+| **vault_hunters** | Fabric | 17 | `./modpack_selector.sh vault_hunters` |
 
-### 🔌 Bukkit 플러그인 버전 (legacy)
-- ⚠️ **하이브리드 서버 필요** (Arclight, Mohist, CardBoard)
-- ⚠️ **설치가 복잡함**
-- 📦 [플러그인 버전 다운로드](https://github.com/namepix/minecraft-modpack-ai/tree/plugin-version)
+### 🚀 자동 모드팩 감지
+- ✅ **Java 버전 자동 선택** (17/21 지원)
+- ✅ **플랫폼 자동 매칭** (NeoForge/Fabric)
+- ✅ **모드팩 폴더 자동 감지**
+- ✅ **기존 JAR 충돌 방지**
+
+**📖 상세 가이드**: [다중 Java 버전 지원 가이드](MULTI_JAVA_GUIDE.md)
 
 ## 🛠️ 개발 환경
 
@@ -120,9 +126,12 @@ GET  /recipe/<item_name>        # 아이템 제작법 조회
 
 ### 빌드
 ```bash
-# 모드 빌드
-cd minecraft_mod
-./gradlew build
+# 🚀 모든 Java 버전 모드 빌드 (권장)
+./build_all_mods_multi_java.sh
+
+# 🎯 특정 모드팩용 설치
+./modpack_selector.sh prominence_2  # Java 17 Fabric
+./modpack_selector.sh enigmatica_10 # Java 21 NeoForge
 
 # 백엔드 테스트
 cd backend

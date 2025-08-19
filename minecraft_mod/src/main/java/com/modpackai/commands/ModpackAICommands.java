@@ -9,7 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.component.DataComponents;
+// import net.minecraft.core.component.DataComponents; // Java 21에서만 사용 가능
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -119,9 +119,11 @@ public class ModpackAICommands {
     private static int handleGiveAIItem(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         
-        // AI 아이템 생성
+        // AI 아이템 생성 (다중 Java 버전 호환성)
         ItemStack aiItem = new ItemStack(ModpackAIMod.getInstance().getConfig().getAIItemMaterial());
-        aiItem.set(DataComponents.CUSTOM_NAME, Component.literal(ModpackAIMod.getInstance().getConfig().getAIItemName()));
+        
+        // 아이템 이름 설정 (버전별 API 호환성)
+        setItemDisplayName(aiItem, ModpackAIMod.getInstance().getConfig().getAIItemName());
         
         // 인벤토리에 추가
         if (player.getInventory().add(aiItem)) {
@@ -446,5 +448,37 @@ public class ModpackAICommands {
      */
     private static String getModpackName() {
         return ModpackAIMod.getInstance().getConfig().getModpackName();
+    }
+    
+    /**
+     * 아이템 표시 이름 설정 (버전 호환성)
+     */
+    private static void setItemDisplayName(ItemStack itemStack, String displayName) {
+        try {
+            // Java 21/NeoForge 21+: DataComponents API 사용
+            Class<?> dataComponentsClass = Class.forName("net.minecraft.core.component.DataComponents");
+            Object customNameComponent = dataComponentsClass.getField("CUSTOM_NAME").get(null);
+            
+            itemStack.getClass().getMethod("set", Object.class, Object.class)
+                .invoke(itemStack, customNameComponent, Component.literal(displayName));
+                
+            ModpackAIMod.LOGGER.debug("Java 21 DataComponents API로 아이템 이름 설정 성공");
+            
+        } catch (ClassNotFoundException | NoSuchFieldException | NoSuchMethodException e) {
+            // Java 17/NeoForge 20.4: 레거시 API 사용
+            try {
+                // NeoForge 20.4에서는 NBT 기반 이름 설정
+                itemStack.getClass().getMethod("setHoverName", Component.class)
+                    .invoke(itemStack, Component.literal(displayName));
+                    
+                ModpackAIMod.LOGGER.debug("Java 17 setHoverName API로 아이템 이름 설정 성공");
+                
+            } catch (Exception e2) {
+                // 아이템 이름 설정 실패 - 기본 아이템으로 계속 진행
+                ModpackAIMod.LOGGER.warn("아이템 이름 설정 실패 (setHoverName 오류): {}", e2.getMessage());
+            }
+        } catch (Exception e) {
+            ModpackAIMod.LOGGER.warn("아이템 이름 설정 실패 (DataComponents 오류): {}", e.getMessage());
+        }
     }
 }

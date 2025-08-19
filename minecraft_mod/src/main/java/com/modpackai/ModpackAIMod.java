@@ -3,6 +3,7 @@ package com.modpackai;
 import com.modpackai.managers.ModpackAIConfig;
 import com.modpackai.managers.ModpackAIManager;
 import com.modpackai.commands.ModpackAICommands;
+import com.modpackai.events.PlayerInteractionHandler;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.bus.api.IEventBus;
@@ -51,6 +52,14 @@ public class ModpackAIMod {
         
         // AI 매니저 초기화
         aiManager = new ModpackAIManager(config);
+        
+        // 이벤트 핸들러 수동 등록 (Java 17 호환성)
+        try {
+            PlayerInteractionHandler.register();
+            LOGGER.info("이벤트 핸들러 등록 완료");
+        } catch (Exception e) {
+            LOGGER.warn("이벤트 핸들러 등록 실패: {}", e.getMessage());
+        }
         
         LOGGER.info("ModpackAI 공통 설정 완료");
     }

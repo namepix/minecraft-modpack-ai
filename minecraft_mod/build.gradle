@@ -7,14 +7,18 @@ version = '1.0.0'
 group = 'com.modpackai'
 archivesBaseName = 'modpackai'
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+// Java 버전 동적 설정 (다중 버전 지원)
+def javaVersion = project.hasProperty('targetJavaVersion') ? project.targetJavaVersion as int : 21
+java.toolchain.languageVersion = JavaLanguageVersion.of(javaVersion)
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation 'net.neoforged:neoforge:21.1.184'
+    // NeoForge 버전 동적 선택 (Java 버전에 따라)
+    def neoforgeVersion = javaVersion == 17 ? '20.4.237' : '21.1.184'
+    implementation "net.neoforged:neoforge:${neoforgeVersion}"
 }
 
 // Configure the runs

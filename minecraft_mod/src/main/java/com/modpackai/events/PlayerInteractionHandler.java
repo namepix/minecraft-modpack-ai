@@ -12,17 +12,24 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * NeoForge 모드용 플레이어 상호작용 이벤트 핸들러
  * Bukkit PlayerInteractListener를 NeoForge 이벤트로 변환
+ * 다중 Java 버전 지원 (어노테이션 대신 수동 등록)
  */
-@EventBusSubscriber(modid = ModpackAIMod.MOD_ID)
 public class PlayerInteractionHandler {
+    
+    /**
+     * 이벤트 핸들러 등록 (수동)
+     */
+    public static void register() {
+        NeoForge.EVENT_BUS.register(PlayerInteractionHandler.class);
+    }
     private static final Logger LOGGER = LoggerFactory.getLogger(PlayerInteractionHandler.class);
     
     /**
@@ -89,29 +96,34 @@ public class PlayerInteractionHandler {
     }
     
     /**
-     * 아이템이 AI 아이템인지 확인
+     * 아이템이 AI 아이템인지 확인 (다중 Java 버전 지원)
      */
     private static boolean isAIItem(ItemStack itemStack) {
         if (itemStack.isEmpty()) {
             return false;
         }
         
-        // AI 아이템 타입 확인
-        if (itemStack.getItem() != ModpackAIMod.getInstance().getConfig().getAIItemMaterial()) {
-            return false;
-        }
-        
-        // 아이템 이름 확인 (더 정확한 검증)
-        Component displayName = itemStack.getHoverName();
-        String expectedName = ModpackAIMod.getInstance().getConfig().getAIItemName();
-        
-        if (displayName != null) {
-            String actualName = displayName.getString();
-            // 색깔 코드 제거해서 비교
-            String cleanActualName = actualName.replaceAll("§[0-9a-fA-F]", "");
-            String cleanExpectedName = expectedName.replaceAll("§[0-9a-fA-F]", "");
+        try {
+            // AI 아이템 타입 확인
+            if (itemStack.getItem() != ModpackAIMod.getInstance().getConfig().getAIItemMaterial()) {
+                return false;
+            }
             
-            return cleanActualName.contains("모드팩 AI") || cleanExpectedName.equals(cleanActualName);
+            // 아이템 이름 확인 (버전 호환성)
+            Component displayName = itemStack.getHoverName();
+            String expectedName = ModpackAIMod.getInstance().getConfig().getAIItemName();
+            
+            if (displayName != null) {
+                String actualName = displayName.getString();
+                // 색깔 코드 제거해서 비교
+                String cleanActualName = actualName.replaceAll("§[0-9a-fA-F]", "");
+                String cleanExpectedName = expectedName.replaceAll("§[0-9a-fA-F]", "");
+                
+                return cleanActualName.contains("모드팩 AI") || cleanExpectedName.equals(cleanActualName);
+            }
+            
+        } catch (Exception e) {
+            LOGGER.warn("AI 아이템 확인 중 오류 (버전 호환성): {}", e.getMessage());
         }
         
         return false;

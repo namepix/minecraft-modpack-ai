@@ -69,8 +69,12 @@ processResources {
     }
 }
 
+// Java 버전 동적 설정 (다중 버전 지원)
+def javaVersion = project.hasProperty('targetJavaVersion') ? project.targetJavaVersion as int : 21
+def javaVersionEnum = javaVersion == 17 ? JavaVersion.VERSION_17 : JavaVersion.VERSION_21
+
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = javaVersion
 }
 
 java {
@@ -79,8 +83,8 @@ java {
     // If you remove this line, sources will not be generated.
     withSourcesJar()
 
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = javaVersionEnum
+    targetCompatibility = javaVersionEnum
 }
 
 jar {
